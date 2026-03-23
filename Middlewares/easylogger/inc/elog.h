@@ -196,6 +196,7 @@ typedef enum {
 } ElogErrCode;
 
 /* elog.c */
+void my_elog_init(void);
 ElogErrCode elog_init(void);
 void elog_deinit(void);
 void elog_start(void);

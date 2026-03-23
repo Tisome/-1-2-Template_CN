@@ -4,8 +4,12 @@ type: ARM
 deviceName: GD32F303CC
 packDir: .pack/GigaDevice/GD32F30x_DFP.2.2.1
 srcDirs:
-  - perph
   - Middlewares
+  - Task
+  - TestTask
+  - periph
+  - BSP
+  - App
 virtualFolder:
   name: <virtual_root>
   files: []
@@ -101,6 +105,14 @@ targets:
         - Middlewares/easylogger/inc
         - Middlewares/easylogger/port
         - Middlewares/SEGGER_RTT
+        - Middlewares/circular_buffer/inc
+        - periph/inc
+        - Task/inc
+        - TestTask/inc
+        - Middlewares/Modbus/inc
+        - App/inc
+        - BSP/KEY/inc
+        - BSP/at24cxx/inc
       libList: []
     excludeList: []
     toolchain: AC5

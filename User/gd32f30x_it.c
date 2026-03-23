@@ -39,6 +39,10 @@ OF SUCH DAMAGE.
 
 #include "FreeRTOS.h"
 
+#include "gpio.h"
+#include "timer.h"
+#include "usart.h"
+
 extern void xPortSysTickHandler(void);
 
 /*!
@@ -152,148 +156,319 @@ void DebugMon_Handler(void)
 
 // 以下为中断服务函数，用户可根据需要，在对应函数内添加内容
 
-/* EXTI0 中断服务函数 */
+/*-------------------------------------------------------
+ * 按键 中断
+ *------------------------------------------------------*/
+
+/* EXTI0(KEY1)  中断服务函数 */
 void EXTI0_IRQHandler(void)
 {
-    ;
+    if (exti_interrupt_flag_get(KEY1_EXTI) != RESET)
+    {
+        exti_interrupt_flag_clear(KEY1_EXTI);
+        GPIO_EXTI_IRQHandler(KEY1_GPIO_PIN);
+    }
 }
 
-/* EXTI1 中断服务函数 */
-void EXTI1_IRQHandler(void)
-{
-    ;
-}
-
-/* EXTI2 中断服务函数 */
-void EXTI2_IRQHandler(void)
-{
-    ;
-}
-/* EXTI3 中断服务函数 */
-void EXTI3_IRQHandler(void)
-{
-    ;
-}
-/* EXTI4 中断服务函数 */
-void EXTI4_IRQHandler(void)
-{
-    ;
-}
-/* EXTI5_9 中断服务函数 */
+/* EXTI5_9(KEY2)  中断服务函数 */
 void EXTI5_9_IRQHandler(void)
 {
-    ;
+    if (exti_interrupt_flag_get(KEY2_EXTI) != RESET)
+    {
+        exti_interrupt_flag_clear(KEY2_EXTI);
+        GPIO_EXTI_IRQHandler(KEY2_GPIO_PIN);
+    }
 }
-/* EXTI10_15 中断服务函数 */
+
+/* EXTI1(KEY3)  中断服务函数 */
+void EXTI1_IRQHandler(void)
+{
+    if (exti_interrupt_flag_get(KEY3_EXTI) != RESET)
+    {
+        exti_interrupt_flag_clear(KEY3_EXTI);
+        GPIO_EXTI_IRQHandler(KEY3_GPIO_PIN);
+    }
+}
+
+/* EXTI2(KEY4)  中断服务函数 */
+void EXTI2_IRQHandler(void)
+{
+    if (exti_interrupt_flag_get(KEY4_EXTI) != RESET)
+    {
+        exti_interrupt_flag_clear(KEY4_EXTI);
+        GPIO_EXTI_IRQHandler(KEY4_GPIO_PIN);
+    }
+}
+
+/* EXTI10_15(FPGA_INT) 中断服务函数 */
 void EXTI10_15_IRQHandler(void)
 {
-    ;
+    if (exti_interrupt_flag_get(FPGA_INT_EXTI) != RESET)
+    {
+        exti_interrupt_flag_clear(FPGA_INT_EXTI);
+        GPIO_EXTI_IRQHandler(FPGA_INT_GPIO_PIN);
+    }
 }
 
-/* TIMER0_Channel 中断服务函数 */
-void TIMER0_Channel_IRQHandler(void)
+void fpga_int_gpio_exti_handler(uint32_t GPIO_PIN_x)
 {
-    ;
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    if (GPIO_PIN_x == FPGA_INT_GPIO_PIN)
+    {
+        xSemaphoreGiveFromISR(xSem_FPGA_INT, &xHigherPriorityTaskWoken);
+    }
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
-/* TIMER1 中断服务函数 */
-void TIMER1_IRQHandler(void)
+void GPIO_EXTI_IRQHandler(uint32_t GPIO_PIN_x)
 {
-    ;
+    switch (GPIO_PIN_x)
+    {
+    case (KEY1_GPIO_PIN):
+    case (KEY2_GPIO_PIN):
+    case (KEY3_GPIO_PIN):
+    case (KEY4_GPIO_PIN):
+        key_gpio_exti_handler(GPIO_PIN_x);
+        break;
+    case (FPGA_INT_GPIO_PIN):
+        fpga_int_gpio_exti_handler(GPIO_PIN_x);
+    }
 }
 
-/* TIMER2 中断服务函数 */
-void TIMER2_IRQHandler(void)
-{
-    ;
-}
-
-/* TIMER3 中断服务函数 */
-void TIMER3_IRQHandler(void)
-{
-    ;
-}
-
-/* TIMER4 中断服务函数 */
-void TIMER4_IRQHandler(void)
-{
-    ;
-}
-
-/* TIMER5 中断服务函数 */
-void TIMER5_IRQHandler(void)
-{
-    ;
-}
-
-/* TIMER6 中断服务函数 */
-void TIMER6_IRQHandler(void)
-{
-    ;
-}
-
-/* TIMER7 中断服务函数 */
-void TIMER7_Channel_IRQHandler(void)
-{
-    ;
-}
-
-/* I2C0_EV 中断服务函数 */
-void I2C0_EV_IRQHandler(void)
-{
-    ;
-}
-
-/* I2C1_EV 中断服务函数 */
-void I2C1_EV_IRQHandler(void)
-{
-    ;
-}
-
-/* SPI0 中断服务函数 */
-void SPI0_IRQHandler(void)
-{
-    ;
-}
-
-/* SPI1 中断服务函数 */
-void SPI1_IRQHandler(void)
-{
-    ;
-}
-
-/* SPI2 中断服务函数 */
-void SPI2_IRQHandler(void)
-{
-    ;
-}
-
-/* USART0 中断服务函数 */
+/* =========================
+ * USART0 中断
+ * 每收到1字节：
+ * 1. 取数据
+ * 2. 写缓冲区
+ * 3. 重启3.5T定时器
+ * ========================= */
 void USART0_IRQHandler(void)
 {
-    ;
+    uint8_t data;
+
+    /* 接收缓冲非空 */
+    if (RESET != usart_interrupt_flag_get(USART0, USART_INT_FLAG_RBNE))
+    {
+        data = (uint8_t)usart_data_receive(USART0);
+
+        /*
+         * 如果上一帧还没被任务取走，这里简单丢弃新数据
+         * 对 Modbus 从机通常够用，因为一般是一问一答
+         */
+        if (0U == s_modbus_frame_ready)
+        {
+            if (s_modbus_rx_len < MODBUS_RX_BUF_SIZE)
+            {
+                s_modbus_rx_buf[s_modbus_rx_len++] = data;
+                modbus_timer_restart();
+            }
+            else
+            {
+                /* 缓冲区溢出 */
+                s_modbus_rx_overflow = 1U;
+            }
+        }
+    }
+
+    /*
+     * 错误处理
+     * 某些库里还可以分别处理:
+     * USART_FLAG_ORERR / NERR / FERR
+     */
+    if (RESET != usart_flag_get(USART0, USART_FLAG_ORERR))
+    {
+        volatile uint32_t stat;
+        volatile uint32_t data_dummy;
+
+        stat = USART_STAT0(USART0);
+        data_dummy = USART_DATA(USART0);
+        (void)stat;
+        (void)data_dummy;
+
+        modbus_timer_stop();
+        s_modbus_rx_len = 0U;
+        s_modbus_frame_ready = 0U;
+        s_modbus_rx_overflow = 0U;
+    }
 }
 
-/* USART1 中断服务函数 */
-void USART1_IRQHandler(void)
+/* =========================
+ * TIMER2 中断
+ * 到时表示：超过3.5T没有新字节，判定一帧完成
+ * ========================= */
+void TIMER2_IRQHandler(void)
 {
-    ;
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+    if (SET == timer_interrupt_flag_get(MODBUS_TIMER, TIMER_INT_FLAG_UP))
+    {
+        timer_interrupt_flag_clear(MODBUS_TIMER, TIMER_INT_FLAG_UP);
+
+        /* 单次触发，进来后先停掉 */
+        modbus_timer_stop();
+
+        if ((s_modbus_rx_len > 0U) && (0U == s_modbus_rx_overflow))
+        {
+            s_modbus_frame_ready = 1U;
+
+            if (g_modbus_task_handle != NULL)
+            {
+                vTaskNotifyGiveFromISR(g_modbus_task_handle, &xHigherPriorityTaskWoken);
+                portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+            }
+        }
+        else
+        {
+            /* 出错或空帧则清掉 */
+            s_modbus_rx_len = 0U;
+            s_modbus_frame_ready = 0U;
+            s_modbus_rx_overflow = 0U;
+        }
+    }
 }
 
-/* USART2 中断服务函数 */
-void USART2_IRQHandler(void)
-{
-    ;
-}
+// /* EXTI0 中断服务函数 */
+// void EXTI0_IRQHandler(void)
+// {
+//     ;
+// }
 
-/* UART3 中断服务函数 */
-void UART3_IRQHandler(void)
-{
-    ;
-}
+// /* EXTI1 中断服务函数 */
+// void EXTI1_IRQHandler(void)
+// {
+//     ;
+// }
 
-/* USART4 中断服务函数 */
-void UART4_IRQHandler(void)
-{
-    ;
-}
+// /* EXTI2 中断服务函数 */
+// void EXTI2_IRQHandler(void)
+// {
+//     ;
+// }
+// /* EXTI3 中断服务函数 */
+// void EXTI3_IRQHandler(void)
+// {
+//     ;
+// }
+// /* EXTI4 中断服务函数 */
+// void EXTI4_IRQHandler(void)
+// {
+//     ;
+// }
+// /* EXTI5_9 中断服务函数 */
+// void EXTI5_9_IRQHandler(void)
+// {
+//     ;
+// }
+// /* EXTI10_15 中断服务函数 */
+// void EXTI10_15_IRQHandler(void)
+// {
+//     ;
+// }
+
+// /* TIMER0_Channel 中断服务函数 */
+// void TIMER0_Channel_IRQHandler(void)
+// {
+//     ;
+// }
+
+// /* TIMER1 中断服务函数 */
+// void TIMER1_IRQHandler(void)
+// {
+//     ;
+// }
+
+// /* TIMER2 中断服务函数 */
+// void TIMER2_IRQHandler(void)
+// {
+//     ;
+// }
+
+// /* TIMER3 中断服务函数 */
+// void TIMER3_IRQHandler(void)
+// {
+//     ;
+// }
+
+// /* TIMER4 中断服务函数 */
+// void TIMER4_IRQHandler(void)
+// {
+//     ;
+// }
+
+// /* TIMER5 中断服务函数 */
+// void TIMER5_IRQHandler(void)
+// {
+//     ;
+// }
+
+// /* TIMER6 中断服务函数 */
+// void TIMER6_IRQHandler(void)
+// {
+//     ;
+// }
+
+// /* TIMER7 中断服务函数 */
+// void TIMER7_Channel_IRQHandler(void)
+// {
+//     ;
+// }
+
+// /* I2C0_EV 中断服务函数 */
+// void I2C0_EV_IRQHandler(void)
+// {
+//     ;
+// }
+
+// /* I2C1_EV 中断服务函数 */
+// void I2C1_EV_IRQHandler(void)
+// {
+//     ;
+// }
+
+// /* SPI0 中断服务函数 */
+// void SPI0_IRQHandler(void)
+// {
+//     ;
+// }
+
+// /* SPI1 中断服务函数 */
+// void SPI1_IRQHandler(void)
+// {
+//     ;
+// }
+
+// /* SPI2 中断服务函数 */
+// void SPI2_IRQHandler(void)
+// {
+//     ;
+// }
+
+// /* USART0 中断服务函数 */
+// void USART0_IRQHandler(void)
+// {
+//     ;
+// }
+
+// /* USART1 中断服务函数 */
+// void USART1_IRQHandler(void)
+// {
+//     ;
+// }
+
+// /* USART2 中断服务函数 */
+// void USART2_IRQHandler(void)
+// {
+//     ;
+// }
+
+// /* UART3 中断服务函数 */
+// void UART3_IRQHandler(void)
+// {
+//     ;
+// }
+
+// /* USART4 中断服务函数 */
+// void UART4_IRQHandler(void)
+// {
+//     ;
+// }

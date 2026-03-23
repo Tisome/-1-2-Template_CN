@@ -60,55 +60,63 @@ void DebugMon_Handler(void);
 /* this function handles SysTick exception */
 // void SysTick_Handler(void);
 
-/* EXTI0 中断服务函数 */
 void EXTI0_IRQHandler(void);
-/*  EXTI1 中断服务函数 */
 void EXTI1_IRQHandler(void);
-/*  EXTI2 中断服务函数 */
 void EXTI2_IRQHandler(void);
-/*  EXTI3 中断服务函数 */
-void EXTI3_IRQHandler(void);
-/*  EXTI4 中断服务函数 */
-void EXTI4_IRQHandler(void);
-/*  EXTI5_9 中断服务函数 */
 void EXTI5_9_IRQHandler(void);
-/*  EXTI10_15 中断服务函数 */
-void EXTI10_15_IRQHandler(void);
-/*  TIMER0_Channel 中断服务函数 */
-void TIMER0_Channel_IRQHandler(void);
-/*  TIMER1 中断服务函数 */
-void TIMER1_IRQHandler(void);
-/*  TIMER2 中断服务函数 */
-void TIMER2_IRQHandler(void);
-/*  TIMER3 中断服务函数 */
-void TIMER3_IRQHandler(void);
-/*  TIMER4 中断服务函数 */
-void TIMER4_IRQHandler(void);
-/*  TIMER5 中断服务函数 */
-void TIMER5_IRQHandler(void);
-/*  TIMER6 中断服务函数 */
-void TIMER6_IRQHandler(void);
-/*  TIMER7_Channel 中断服务函数 */
-void TIMER7_Channel_IRQHandler(void);
-/*  I2C0_EV 中断服务函数 */
-void I2C0_EV_IRQHandler(void);
-/*  I2C1_EV 中断服务函数 */
-void I2C1_EV_IRQHandler(void);
-/*  SPI0 中断服务函数 */
-void SPI0_IRQHandler(void);
-/*  SPI1 中断服务函数 */
-void SPI1_IRQHandler(void);
-/*  SPI2 中断服务函数 */
-void SPI2_IRQHandler(void);
-/*  USART0 中断服务函数 */
+
 void USART0_IRQHandler(void);
-/*  USART1 中断服务函数 */
-void USART1_IRQHandler(void);
-/*  USART2 中断服务函数 */
-void USART2_IRQHandler(void);
-/*  USART3 中断服务函数 */
-void USART3_IRQHandler(void);
-/*  USART4 中断服务函数 */
-void USART4_IRQHandler(void);
+void DMA0_Channel4_IRQHandler(void);
+
+// /* EXTI0 中断服务函数 */
+// void EXTI0_IRQHandler(void);
+// /*  EXTI1 中断服务函数 */
+// void EXTI1_IRQHandler(void);
+// /*  EXTI2 中断服务函数 */
+// void EXTI2_IRQHandler(void);
+// /*  EXTI3 中断服务函数 */
+// void EXTI3_IRQHandler(void);
+// /*  EXTI4 中断服务函数 */
+// void EXTI4_IRQHandler(void);
+// /*  EXTI5_9 中断服务函数 */
+// void EXTI5_9_IRQHandler(void);
+// /*  EXTI10_15 中断服务函数 */
+// void EXTI10_15_IRQHandler(void);
+// /*  TIMER0_Channel 中断服务函数 */
+// void TIMER0_Channel_IRQHandler(void);
+// /*  TIMER1 中断服务函数 */
+// void TIMER1_IRQHandler(void);
+// /*  TIMER2 中断服务函数 */
+// void TIMER2_IRQHandler(void);
+// /*  TIMER3 中断服务函数 */
+// void TIMER3_IRQHandler(void);
+// /*  TIMER4 中断服务函数 */
+// void TIMER4_IRQHandler(void);
+// /*  TIMER5 中断服务函数 */
+// void TIMER5_IRQHandler(void);
+// /*  TIMER6 中断服务函数 */
+// void TIMER6_IRQHandler(void);
+// /*  TIMER7_Channel 中断服务函数 */
+// void TIMER7_Channel_IRQHandler(void);
+// /*  I2C0_EV 中断服务函数 */
+// void I2C0_EV_IRQHandler(void);
+// /*  I2C1_EV 中断服务函数 */
+// void I2C1_EV_IRQHandler(void);
+// /*  SPI0 中断服务函数 */
+// void SPI0_IRQHandler(void);
+// /*  SPI1 中断服务函数 */
+// void SPI1_IRQHandler(void);
+// /*  SPI2 中断服务函数 */
+// void SPI2_IRQHandler(void);
+// /*  USART0 中断服务函数 */
+// void USART0_IRQHandler(void);
+// /*  USART1 中断服务函数 */
+// void USART1_IRQHandler(void);
+// /*  USART2 中断服务函数 */
+// void USART2_IRQHandler(void);
+// /*  USART3 中断服务函数 */
+// void USART3_IRQHandler(void);
+// /*  USART4 中断服务函数 */
+// void USART4_IRQHandler(void);
 
 #endif /* GD32F30X_IT_H */

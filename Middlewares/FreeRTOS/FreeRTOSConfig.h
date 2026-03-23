@@ -47,19 +47,15 @@
 
 extern uint32_t SystemCoreClock;
 
-#define configUSE_PREEMPTION     1
-#define configUSE_IDLE_HOOK      0
-#define configUSE_TICK_HOOK      0
-#define configCPU_CLOCK_HZ       (SystemCoreClock)
-#define configTICK_RATE_HZ       ((TickType_t)1000)
-#define configMAX_PRIORITIES     (15)
-#define configMINIMAL_STACK_SIZE ((unsigned short)130)
+#define configUSE_PREEMPTION           1
+#define configUSE_IDLE_HOOK            0
+#define configUSE_TICK_HOOK            0
+#define configCPU_CLOCK_HZ             (SystemCoreClock)
+#define configTICK_RATE_HZ             ((TickType_t)1000)
+#define configMAX_PRIORITIES           (15)
+#define configMINIMAL_STACK_SIZE       ((unsigned short)130)
 
-#if SYS_TEST
-#define configTOTAL_HEAP_SIZE ((size_t)(12 * 1024))
-#else
-#define configTOTAL_HEAP_SIZE ((size_t)(30 * 1024))
-#endif
+#define configTOTAL_HEAP_SIZE          ((size_t)(10 * 1024))
 
 #define configMAX_TASK_NAME_LEN        (15)
 #define configUSE_TRACE_FACILITY       1

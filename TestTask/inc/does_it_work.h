@@ -1,0 +1,1 @@
+void does_it_work(void);

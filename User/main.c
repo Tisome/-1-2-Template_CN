@@ -1,24 +1,15 @@
 #include "main.h"
-#include "FreeRTOS.h"
-#include "task.h"
 
-void led_task(void *p)
-{
-    while (1)
-    {
-        // 翻转GPIO
-        vTaskDelay(pdMS_TO_TICKS(500));
-    }
-}
+#include "elog.h"
+#include "periph_link.h"
+
+#include "does_it_work.h"
 
 int main(void)
 {
-    // 硬件初始化
+    hardware_periph_init();
 
-    xTaskCreate(led_task, "led", 128, NULL, 2, NULL);
+    my_elog_init();
 
-    vTaskStartScheduler();
-
-    while (1)
-        ; // 不应该执行到这里
+    does_it_work();
 }

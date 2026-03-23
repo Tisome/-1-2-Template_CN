@@ -25,20 +25,26 @@
  * Function: Portable interface for each platform.
  * Created on: 2015-04-28
  */
- 
-#include <elog.h>
+
+#include "FreeRTOS.h"
+#include "task.h"
+
 #include "SEGGER_RTT.h"
+
+#include <elog.h>
+#include <stdio.h>
 
 /**
  * EasyLogger port initialize
  *
  * @return result
  */
-ElogErrCode elog_port_init(void) {
+ElogErrCode elog_port_init(void)
+{
     ElogErrCode result = ELOG_NO_ERR;
 
     /* add your code here */
-    
+
     return result;
 }
 
@@ -46,10 +52,10 @@ ElogErrCode elog_port_init(void) {
  * EasyLogger port deinitialize
  *
  */
-void elog_port_deinit(void) {
+void elog_port_deinit(void)
+{
 
     /* add your code here */
-
 }
 
 /**
@@ -58,8 +64,9 @@ void elog_port_deinit(void) {
  * @param log output of log
  * @param size log size
  */
-void elog_port_output(const char *log, size_t size) {
-    
+void elog_port_output(const char *log, size_t size)
+{
+
     /* add your code here */
     SEGGER_RTT_Write(0, log, size);
 }
@@ -67,8 +74,9 @@ void elog_port_output(const char *log, size_t size) {
 /**
  * output lock
  */
-void elog_port_output_lock(void) {
-    
+void elog_port_output_lock(void)
+{
+
     /* add your code here */
     __disable_irq();
 }
@@ -76,8 +84,9 @@ void elog_port_output_lock(void) {
 /**
  * output unlock
  */
-void elog_port_output_unlock(void) {
-    
+void elog_port_output_unlock(void)
+{
+
     /* add your code here */
     __enable_irq();
 }
@@ -87,10 +96,15 @@ void elog_port_output_unlock(void) {
  *
  * @return current time
  */
-const char *elog_port_get_time(void) {
-    
+
+static char time_buf[32];
+const char *elog_port_get_time(void)
+{
     /* add your code here */
-    return "";
+    static TickType_t tick = 0;
+    tick = xTaskGetTickCount();
+    snprintf(time_buf, sizeof(time_buf), "[%lu]", tick);
+    return time_buf;
 }
 
 /**
@@ -98,8 +112,9 @@ const char *elog_port_get_time(void) {
  *
  * @return current process name
  */
-const char *elog_port_get_p_info(void) {
-    
+const char *elog_port_get_p_info(void)
+{
+
     /* add your code here */
     return "";
 }
@@ -109,8 +124,9 @@ const char *elog_port_get_p_info(void) {
  *
  * @return current thread name
  */
-const char *elog_port_get_t_info(void) {
-    
+const char *elog_port_get_t_info(void)
+{
+
     /* add your code here */
-    return "";
+    return pcTaskGetName(xTaskGetCurrentTaskHandle());
 }
