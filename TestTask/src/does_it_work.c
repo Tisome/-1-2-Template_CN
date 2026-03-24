@@ -1,15 +1,15 @@
 #include "does_it_work.h"
 
+#include "elog.h"
+
 #include "FreeRTOS.h"
-#include "queue.h"
-#include "semphr.h"
 #include "task.h"
 
-void led_task(void *p)
+void elog_task(void *p)
 {
     while (1)
     {
-        // 翻转GPIO
+        log_i("hello world");
         vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
@@ -17,7 +17,7 @@ void led_task(void *p)
 int task_test(void)
 {
 
-    xTaskCreate(led_task, "led", 128, NULL, 2, NULL);
+    xTaskCreate(elog_task, "elog", 128, NULL, 2, NULL);
 
     vTaskStartScheduler();
 

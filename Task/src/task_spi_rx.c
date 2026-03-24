@@ -41,23 +41,6 @@
 /************************* std header file *************************/
 #include <string.h>
 
-static uint8_t Rx_Index_Buf[RUF_X_PACKET_SIZE_BYTES]; // SPI DMA 接收缓冲区（按字节存放）
-#define RX_INDEX_SIZE RUF_X_PACKET_SIZE_BYTES         // 本次 DMA 接收的字节数（与 FPGA 协议包长度一致）
-
-static int32_t fpga_spi_read_packet(uint8_t *rx_buf, uint16_t len)
-{
-    uint16_t i;
-
-    if ((rx_buf == NULL) || (len == 0U))
-    {
-        return -1;
-    }
-
-    for (int i = 0; i < len; i++)
-    {
-    }
-}
-
 void task_spi_rx(void *pvParameter)
 {
     rufx_raw_packet_t packet;
