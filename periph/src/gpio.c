@@ -29,6 +29,9 @@ void gpio_config()
     gpio_init(FPGA_SPI_SCK_GPIO_PORT, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, FPGA_SPI_SCK_GPIO_PIN);
     gpio_init(FPGA_SPI_MOSI_GPIO_PORT, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, FPGA_SPI_MOSI_GPIO_PIN);
     gpio_init(FPGA_SPI_MISO_GPIO_PORT, GPIO_MODE_IN_FLOATING, GPIO_OSPEED_50MHZ, FPGA_SPI_MISO_GPIO_PIN);
+
+    /* disable spi */
+    FPGA_SPI_CS_DISABLE();
     /* configure FPGA SPI GPIO */
 
     /* configure TFT LCD GPIO */
@@ -83,4 +86,9 @@ void gpio_config()
     /* configure RS485 Control GPIO port */
     gpio_init(RS485_CONTROL_GPIO_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, RS485_CONTROL_PIN);
     gpio_bit_reset(RS485_CONTROL_GPIO_PORT, RS485_CONTROL_PIN);
+}
+
+void fpga_spi_cs_high(void)
+{
+    gpio_bit_set(FPGA_SPI_NSS_GPIO_PORT, FPGA_SPI_NSS_GPIO_PIN);
 }

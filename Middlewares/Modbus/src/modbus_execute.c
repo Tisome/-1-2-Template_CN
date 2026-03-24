@@ -13,7 +13,7 @@
 void task_modbus_execute(void *parameter)
 {
     modbus_cmd_t cmd;
-
+    (void)cmd;
     (void)parameter;
 
     // while (1)

@@ -148,7 +148,7 @@ void task_key(void *parameter)
 
 void key_gpio_exti_handler(uint16_t GPIO_Pin)
 {
-    static key_press_event_t key_events[KEY_NUMS][2] = {0};
+    static key_press_event_t key_events[KEY_NUMS][2] = {KEY_ID_NONE, KEY_EDGE_NONE, 0};
     static uint32_t last_trigger_time[KEY_NUMS] = {0};
 
     const uint32_t debounce_interval = DEBOUNCE_TIME_MS;
@@ -188,6 +188,7 @@ void key_gpio_exti_handler(uint16_t GPIO_Pin)
 
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
+    // 当前是按下
     if (irq_type[key_id] == KEY_FALLING_EDGE)
     {
         key_events[key_id][0].key_id = key_id;

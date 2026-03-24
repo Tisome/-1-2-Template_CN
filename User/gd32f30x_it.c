@@ -39,6 +39,12 @@ OF SUCH DAMAGE.
 
 #include "FreeRTOS.h"
 
+#include "freertos_resources.h"
+
+#include "task_manager.h"
+
+#include "bsp_key.h"
+
 #include "gpio.h"
 #include "timer.h"
 #include "usart.h"
@@ -156,6 +162,31 @@ void DebugMon_Handler(void)
 
 // 以下为中断服务函数，用户可根据需要，在对应函数内添加内容
 
+void fpga_int_gpio_exti_handler(uint32_t GPIO_PIN_x)
+{
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    if (GPIO_PIN_x == FPGA_INT_GPIO_PIN)
+    {
+        xSemaphoreGiveFromISR(xSem_FPGA_INT, &xHigherPriorityTaskWoken);
+    }
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+}
+
+void GPIO_EXTI_IRQHandler(uint32_t GPIO_PIN_x)
+{
+    switch (GPIO_PIN_x)
+    {
+    case (KEY1_GPIO_PIN):
+    case (KEY2_GPIO_PIN):
+    case (KEY3_GPIO_PIN):
+    case (KEY4_GPIO_PIN):
+        key_gpio_exti_handler(GPIO_PIN_x);
+        break;
+    case (FPGA_INT_GPIO_PIN):
+        fpga_int_gpio_exti_handler(GPIO_PIN_x);
+    }
+}
+
 /*-------------------------------------------------------
  * 按键 中断
  *------------------------------------------------------*/
@@ -207,31 +238,6 @@ void EXTI10_15_IRQHandler(void)
     {
         exti_interrupt_flag_clear(FPGA_INT_EXTI);
         GPIO_EXTI_IRQHandler(FPGA_INT_GPIO_PIN);
-    }
-}
-
-void fpga_int_gpio_exti_handler(uint32_t GPIO_PIN_x)
-{
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    if (GPIO_PIN_x == FPGA_INT_GPIO_PIN)
-    {
-        xSemaphoreGiveFromISR(xSem_FPGA_INT, &xHigherPriorityTaskWoken);
-    }
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-}
-
-void GPIO_EXTI_IRQHandler(uint32_t GPIO_PIN_x)
-{
-    switch (GPIO_PIN_x)
-    {
-    case (KEY1_GPIO_PIN):
-    case (KEY2_GPIO_PIN):
-    case (KEY3_GPIO_PIN):
-    case (KEY4_GPIO_PIN):
-        key_gpio_exti_handler(GPIO_PIN_x);
-        break;
-    case (FPGA_INT_GPIO_PIN):
-        fpga_int_gpio_exti_handler(GPIO_PIN_x);
     }
 }
 
@@ -311,9 +317,12 @@ void TIMER2_IRQHandler(void)
         {
             s_modbus_frame_ready = 1U;
 
-            if (g_modbus_task_handle != NULL)
+            TaskHandle_t task_modbus_parse_handle = NULL;
+            task_modbus_parse_handle = get_modbus_parse_task_handle();
+
+            if (task_modbus_parse_handle != NULL)
             {
-                vTaskNotifyGiveFromISR(g_modbus_task_handle, &xHigherPriorityTaskWoken);
+                vTaskNotifyGiveFromISR(task_modbus_parse_handle, &xHigherPriorityTaskWoken);
                 portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
             }
         }

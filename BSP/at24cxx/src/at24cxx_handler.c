@@ -7,7 +7,7 @@
 #include "elog.h"
 
 #define E2PROM_EVENT_QUEUE_LEN 16U
-#define E2PROM_MAX_DELAY       0xFFFFFFFFUL
+#define E2PROM_MAX_DELAY 0xFFFFFFFFUL
 
 /* Reserved legacy async service instance kept as a rollback path. */
 static eeprom_async_service_t *g_legacy_async_eeprom_service = NULL;
@@ -59,10 +59,9 @@ static eeprom_status_t eeprom_access_sync_internal(eeprom_operation_t operation,
         return eeprom_status_from_at24(chip_status);
     }
 
-    i2c_status = i2c_driver.pf_iic_init(i2c_driver.hi2c,
-                                        (void *)E2PROM_IIC_INSTANCE,
+    i2c_status = i2c_driver.pf_iic_init(i2c_driver.i2c_periph,
                                         100000U);
-    if (i2c_status != I2C_OK)
+    if (i2c_status != IIC_OK)
     {
         return E2PROM_ERROR_RESOURCE;
     }
@@ -160,7 +159,7 @@ static eeprom_status_t eeprom_legacy_async_execute(const eeprom_async_request_t 
     iic_driver_t *i2c_driver = chip_link->p_iic_driver_instance;
     at24cxx_status_t chip_status = AT24CXX_ERROR;
 
-    if ((request == NULL) || (chip_driver == NULL) || (i2c_driver == NULL) || (i2c_driver->hi2c == NULL))
+    if ((request == NULL) || (chip_driver == NULL) || (i2c_driver == NULL) || (i2c_driver->i2c_periph == 0U))
     {
         return E2PROM_ERROR_RESOURCE;
     }

@@ -26,6 +26,16 @@
 #define FPGA_SPI_MOSI_GPIO_PORT GPIOB
 #define FPGA_SPI_MOSI_GPIO_PIN  GPIO_PIN_15
 
+#define FPGA_SPI_CS_DISABLE()                                        \
+    do {                                                             \
+        gpio_bit_set(FPGA_SPI_NSS_GPIO_PORT, FPGA_SPI_NSS_GPIO_PIN); \
+    } while (0);
+
+#define FPGA_SPI_CS_ENABLE()                                           \
+    do {                                                               \
+        gpio_bit_reset(FPGA_SPI_NSS_GPIO_PORT, FPGA_SPI_NSS_GPIO_PIN); \
+    } while (0);
+
 // TFT LCD GPIO
 #define TFT_DC_GPIO_PORT    GPIOB
 #define TFT_DC_GPIO_PIN     GPIO_PIN_4

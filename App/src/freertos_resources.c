@@ -12,12 +12,6 @@ SemaphoreHandle_t xSem_SPI_Rx_Done = NULL; // SPI数据已接收信号量句柄
 QueueHandle_t xQueue_Rx_Index_Buf = NULL;  // 接收数据队列句柄
 QueueHandle_t xQueue_AlgoOut = NULL;       // 算法输出队列句柄
 
-void freertos_resources_init(void)
-{
-    vSemaphoreInit();
-    vQueueInit();
-}
-
 static void vSemaphoreInit(void)
 {
     // 创建按键滤波信号量
@@ -42,4 +36,10 @@ static void vQueueInit(void)
     // 创建算法输出队列
     xQueue_AlgoOut = xQueueCreate(1, sizeof(Pipe_algo_out_data_t));
     configASSERT(xQueue_AlgoOut != NULL);
+}
+
+void freertos_resources_init(void)
+{
+    vSemaphoreInit();
+    vQueueInit();
 }

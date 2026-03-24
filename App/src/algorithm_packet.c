@@ -2,7 +2,6 @@
 #include <math.h>
 
 #include "elog.h"
-#define LOG_TAG "algo_packet"
 #define LOG_LVL ELOG_LVL_VERBOSE
 
 static int64_t sign_extend_48(uint64_t v)

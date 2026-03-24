@@ -36,6 +36,7 @@ static float fake_sine_wave(float t_s, const fake_data_cfg_t *cfg)
     return mid + amp * sinf(w * t_s);
 }
 
+#if FAKE_DATA_MODE == FAKE_DATA_MODE_FLOW
 static double pipe_area_m2(const Pipe_Parameters_t *para)
 {
     if (para == NULL || para->inner_diameter <= 0.0)
@@ -48,11 +49,14 @@ static double pipe_area_m2(const Pipe_Parameters_t *para)
     return M_PI * r_m * r_m;
 }
 
+
 /* L/min -> m^3/s */
 static double lpm_to_m3ps(double q_lpm)
 {
     return q_lpm * 1e-3 / 60.0;
 }
+
+#endif
 
 static uint64_t pack_s48(int64_t v)
 {

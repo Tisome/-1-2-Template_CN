@@ -9,11 +9,13 @@
 
 /* 常见器件默认配置（可按板级硬件修改） */
 #if E2PROM_AT24C32
-#define AT24CXX_DEFAULT_I2C_ADDR_7BIT         0x50U              // 7bit的at24cxx器件iic地址
-#define AT24CXX_DEFAULT_PAGE_SIZE             32U                // 内部数据页大小(B)
-#define AT24CXX_DEFAULT_MEM_ADDR_SIZE         IIC_MEM_ADDR_16BIT // 内部数据地址长度
-#define AT24CXX_DEFAULT_MEM_SIZE_BYTES        4096U              // 内部数据存储容量
-#define AT24CXX_DEFAULT_WRITE_CYCLE_TIMEOUTMS 10U                // 写超时时间
+#define AT24CXX_DEFAULT_I2C_ADDR_7BIT             0x50U              // 7bit的at24cxx器件iic地址
+#define AT24CXX_DEFAULT_PAGE_SIZE                 32U                // 内部数据页大小(B)
+#define AT24CXX_DEFAULT_MEM_ADDR_SIZE             IIC_MEM_ADDR_16BIT // 内部数据地址长度
+#define AT24CXX_DEFAULT_MEM_SIZE_BYTES            4096U              // 内部数据存储容量
+#define AT24CXX_DEFAULT_WRITE_PAGE_TIMEOUT_MS     10U                // 写超时时间
+#define AT24CXX_DEFAULT_READY_TIMEOUT_MS          5U                 // ready测试超时时间
+#define AT24CXX_DEFAULT_READ_PIPE_PARA_TIMEOUT_MS 40U                // 读pipe para大小数据的超时时间
 
 #elif E2PROM_AT24C08
 #define AT24CXX_DEFAULT_I2C_ADDR_7BIT         0x50U
@@ -42,11 +44,13 @@ typedef enum {
  */
 typedef struct
 {
-    uint16_t i2c_addr_7bit;
-    uint16_t page_size;
-    uint16_t mem_addr_size;  // 内部地址长度
-    uint16_t mem_size_bytes; //
-    uint32_t write_cycle_timeout_ms;
+    uint16_t i2c_addr_7bit;             // i2c设备地址
+    uint16_t page_size;                 // 页内字节数量
+    uint16_t mem_addr_size;             // 内部地址长度
+    uint16_t mem_size_bytes;            // 内部存储字节容量
+    uint32_t write_cycle_timeout_ms;    // write一页的超时时间
+    uint32_t ready_timeout_ms;          // ready查询的超时时间
+    uint32_t read_pipe_para_timeout_ms; // 读一整个pipe para的超时时间
 } at24cxx_dev_info_t;
 
 at24cxx_status_t at24cxx_init_default(at24cxx_dev_info_t *dev);

@@ -1,4 +1,5 @@
 #include "modbus_parse.h"
+#include "modbus_crc.h"
 #include "modbus_frame_process.h"
 #include "modbus_protocol.h"
 
@@ -6,6 +7,8 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
+
+#include <string.h>
 
 #include "elog.h"
 

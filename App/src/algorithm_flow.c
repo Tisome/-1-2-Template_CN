@@ -3,7 +3,6 @@
 #include <string.h>
 
 #include "elog.h"
-#define LOG_TAG "algo_flow_out"
 #define LOG_LVL ELOG_LVL_VERBOSE
 
 // 更新 3 秒窗口坏数据统计（环形缓冲）
@@ -34,7 +33,7 @@ double sq_get_percent(const Pipe_algo_state_t *s)
     return 100.0 * (1.0 - (bad / total));
 }
 
-double calc_t_wall_ns(Pipe_Parameters_t *para)
+double calc_t_wall_ns(const Pipe_Parameters_t *para)
 {
     double wall_speed_mps = 0.0; // 管壁中声速，单位 m/s
     double path_wall_m = 0.0;    // 管壁总传播路径，单位 m
@@ -103,7 +102,7 @@ double calc_t_wall_ns(Pipe_Parameters_t *para)
  * - L1 = pipe_dn : mm
  * - 输出 v : m/s
  */
-double vel_calc_from_dt(Pipe_Parameters_t *para,
+double vel_calc_from_dt(const Pipe_Parameters_t *para,
                         double t1_ns,
                         double t2_ns,
                         double dt_ns)

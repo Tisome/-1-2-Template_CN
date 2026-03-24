@@ -5,7 +5,6 @@
 #include <stdbool.h>
 
 #include "elog.h"
-#define LOG_TAG "algo_handle"
 #define LOG_LVL ELOG_LVL_VERBOSE
 
 extern kalman_t kf;

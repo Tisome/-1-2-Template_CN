@@ -58,15 +58,17 @@ typedef enum {
 } key_press_status_t;
 
 typedef enum {
-    KEY_RAISING_EDGE = 0,
-    KEY_FALLING_EDGE = 1
+    KEY_EDGE_NONE    = 0,
+    KEY_RAISING_EDGE = 1,
+    KEY_FALLING_EDGE = 2
 } key_trigger_edge_t;
 
 typedef enum {
-    KEY_ID_1 = 0,
-    KEY_ID_2 = 1,
-    KEY_ID_3 = 2,
-    KEY_ID_4 = 3
+    KEY_ID_NONE = 0,
+    KEY_ID_1    = 1,
+    KEY_ID_2    = 2,
+    KEY_ID_3    = 3,
+    KEY_ID_4    = 4
 } key_id_t;
 
 typedef struct

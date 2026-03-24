@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include "data.h"
 
-double calc_t_wall_ns(Pipe_Parameters_t *para);
+double calc_t_wall_ns(const Pipe_Parameters_t *para);
 
 double sq_get_percent(const Pipe_algo_state_t *s);
 void sq_window_update(Pipe_algo_state_t *s, bool is_bad);

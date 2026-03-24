@@ -146,13 +146,6 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-/*
- * 你自己的 Modbus 任务句柄
- * 在别的 .c 文件里定义，例如:
- * TaskHandle_t g_modbus_task_handle = NULL;
- */
-extern TaskHandle_t g_modbus_task_handle;
-
 /* =========================
  * 全局变量
  * ========================= */
