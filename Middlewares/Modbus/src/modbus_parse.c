@@ -5,6 +5,8 @@
 
 #include "usart.h"
 
+#include "circular_buffer.h"
+
 #include "FreeRTOS.h"
 #include "task.h"
 
@@ -12,9 +14,92 @@
 
 #include "elog.h"
 
+extern circular_buf_t *g_modbus_rx_cb;
+
+static uint16_t modbus_frame_is_ready(circular_buf_t *p_buffer)
+{
+    if (p_buffer == NULL)
+    {
+        log_e("p_buffer == NULL | modbus buf not ready");
+        return 0U;
+    }
+    return p_buffer->frame_ready;
+}
+
+static uint16_t modbus_get_frame(circular_buf_t *p_buffer, uint8_t *buf, uint16_t max_len)
+{
+    uint16_t frame_start;
+    uint16_t frame_end;
+    uint16_t len;
+
+    if ((p_buffer == NULL) || (buf == NULL) || (max_len == 0U))
+    {
+        return 0U;
+    }
+
+    if (modbus_frame_is_ready(p_buffer) != 1U)
+    {
+        return 0U;
+    }
+
+    __disable_irq();
+
+    frame_start = p_buffer->frame_start;
+    frame_end = p_buffer->frame_end;
+
+    /* 先算这一帧长度 */
+    if (frame_end > frame_start)
+    {
+        len = frame_end - frame_start;
+    }
+    else if (frame_end < frame_start)
+    {
+        len = (CIRCULAR_BUF_SIZE - frame_start) + frame_end;
+    }
+    else
+    {
+        /* frame_end == frame_start，表示空帧 */
+        len = 0U;
+    }
+
+    /* 防止用户给的buf太小 */
+    if (len > max_len)
+    {
+        __enable_irq();
+        return 0U;
+    }
+
+    /* 拷贝数据到线性buf */
+    if (len > 0U)
+    {
+        if (frame_end > frame_start)
+        {
+            /* 情况1：没有回绕，直接拷一段 */
+            memcpy(buf, &p_buffer->buffer[frame_start], len);
+        }
+        else
+        {
+            /* 情况2：回绕了，分两段拷贝 */
+            uint16_t len1 = CIRCULAR_BUF_SIZE - frame_start;
+            uint16_t len2 = frame_end;
+
+            memcpy(buf, &p_buffer->buffer[frame_start], len1);
+            memcpy(&buf[len1], &p_buffer->buffer[0], len2);
+        }
+    }
+
+    /* 取完这一帧后，清掉ready标志，并把读位置推进到frame_end */
+    p_buffer->read_pos = frame_end;
+    p_buffer->frame_ready = 0U;
+
+    __enable_irq();
+
+    return len;
+}
+
 // 使用 memset 将 parser 结构体的所有成员初始化为 0
 // 同时设置状态为IDLE
-void reset_modbus_parser(modbus_parser_t *parser)
+static void reset_modbus_parser(modbus_parser_t *parser)
 {
     memset(parser, 0, sizeof(modbus_parser_t));
     parser->state = MODBUS_STATE_IDLE;
@@ -32,7 +117,7 @@ void task_modbus_parse(void *parameter)
     while (1)
     {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-        if (0U == modbus_frame_is_ready())
+        if (0U == modbus_frame_is_ready(g_modbus_rx_cb))
         {
             log_e("modbus frame is not ready");
             continue;
@@ -40,7 +125,7 @@ void task_modbus_parse(void *parameter)
 
         reset_modbus_parser(&parser);
 
-        raw_len = modbus_get_frame(buf, MODBUS_RX_BUF_SIZE);
+        raw_len = modbus_get_frame(g_modbus_rx_cb, buf, MODBUS_RX_BUF_SIZE);
 
         // 没有接收到完整的modbus帧
 

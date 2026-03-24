@@ -43,6 +43,8 @@ OF SUCH DAMAGE.
 
 #include "task_manager.h"
 
+#include "circular_buffer.h"
+
 #include "bsp_key.h"
 
 #include "gpio.h"
@@ -50,6 +52,8 @@ OF SUCH DAMAGE.
 #include "usart.h"
 
 extern void xPortSysTickHandler(void);
+
+extern circular_buf_t *g_modbus_rx_cb;
 
 /*!
     \brief      this function handles NMI exception
@@ -167,9 +171,14 @@ void fpga_int_gpio_exti_handler(uint32_t GPIO_PIN_x)
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     if (GPIO_PIN_x == FPGA_INT_GPIO_PIN)
     {
-        xSemaphoreGiveFromISR(xSem_FPGA_INT, &xHigherPriorityTaskWoken);
+        TaskHandle_t task_spi_rx_handle = NULL;
+        task_spi_rx_handle = get_spi_rx_task_handle();
+        if (task_spi_rx_handle != NULL)
+        {
+            vTaskNotifyGiveFromISR(task_spi_rx_handle, &xHigherPriorityTaskWoken);
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+        }
     }
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
 void GPIO_EXTI_IRQHandler(uint32_t GPIO_PIN_x)
@@ -243,98 +252,75 @@ void EXTI10_15_IRQHandler(void)
 
 /* =========================
  * USART0 中断
- * 每收到1字节：
- * 1. 取数据
- * 2. 写缓冲区
- * 3. 重启3.5T定时器
  * ========================= */
 void USART0_IRQHandler(void)
 {
-    uint8_t data;
-
-    /* 接收缓冲非空 */
-    if (RESET != usart_interrupt_flag_get(USART0, USART_INT_FLAG_RBNE))
-    {
-        data = (uint8_t)usart_data_receive(USART0);
-
-        /*
-         * 如果上一帧还没被任务取走，这里简单丢弃新数据
-         * 对 Modbus 从机通常够用，因为一般是一问一答
-         */
-        if (0U == s_modbus_frame_ready)
-        {
-            if (s_modbus_rx_len < MODBUS_RX_BUF_SIZE)
-            {
-                s_modbus_rx_buf[s_modbus_rx_len++] = data;
-                modbus_timer_restart();
-            }
-            else
-            {
-                /* 缓冲区溢出 */
-                s_modbus_rx_overflow = 1U;
-            }
-        }
-    }
-
-    /*
-     * 错误处理
-     * 某些库里还可以分别处理:
-     * USART_FLAG_ORERR / NERR / FERR
-     */
-    if (RESET != usart_flag_get(USART0, USART_FLAG_ORERR))
-    {
-        volatile uint32_t stat;
-        volatile uint32_t data_dummy;
-
-        stat = USART_STAT0(USART0);
-        data_dummy = USART_DATA(USART0);
-        (void)stat;
-        (void)data_dummy;
-
-        modbus_timer_stop();
-        s_modbus_rx_len = 0U;
-        s_modbus_frame_ready = 0U;
-        s_modbus_rx_overflow = 0U;
-    }
-}
-
-/* =========================
- * TIMER2 中断
- * 到时表示：超过3.5T没有新字节，判定一帧完成
- * ========================= */
-void TIMER2_IRQHandler(void)
-{
+    volatile uint32_t temp;
+    uint16_t dma_pos;
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
-    if (SET == timer_interrupt_flag_get(MODBUS_TIMER, TIMER_INT_FLAG_UP))
+    if (RESET != usart_interrupt_flag_get(USART0, USART_INT_FLAG_IDLE))
     {
-        timer_interrupt_flag_clear(MODBUS_TIMER, TIMER_INT_FLAG_UP);
+        // 清标志
+        temp = USART_STAT0(USART0);
+        temp = USART_DATA(USART0);
+        (void)temp;
 
-        /* 单次触发，进来后先停掉 */
-        modbus_timer_stop();
+        // 获得dma当前写到的位置
+        dma_pos = usart0_dma_get_pos();
 
-        if ((s_modbus_rx_len > 0U) && (0U == s_modbus_rx_overflow))
+        g_modbus_rx_cb->frame_start = g_modbus_rx_cb->read_pos;
+        g_modbus_rx_cb->frame_end = dma_pos;
+        g_modbus_rx_cb->frame_ready = 1;
+
+        TaskHandle_t task_modbus_parse_handle = NULL;
+        task_modbus_parse_handle = get_modbus_parse_task_handle();
+
+        if (task_modbus_parse_handle != NULL)
         {
-            s_modbus_frame_ready = 1U;
-
-            TaskHandle_t task_modbus_parse_handle = NULL;
-            task_modbus_parse_handle = get_modbus_parse_task_handle();
-
-            if (task_modbus_parse_handle != NULL)
-            {
-                vTaskNotifyGiveFromISR(task_modbus_parse_handle, &xHigherPriorityTaskWoken);
-                portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-            }
-        }
-        else
-        {
-            /* 出错或空帧则清掉 */
-            s_modbus_rx_len = 0U;
-            s_modbus_frame_ready = 0U;
-            s_modbus_rx_overflow = 0U;
+            vTaskNotifyGiveFromISR(task_modbus_parse_handle, &xHigherPriorityTaskWoken);
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
         }
     }
 }
+
+// /* =========================
+//  * TIMER2 中断
+//  * 到时表示：超过3.5T没有新字节，判定一帧完成
+//  * ========================= */
+// void TIMER2_IRQHandler(void)
+// {
+//     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+//     if (SET == timer_interrupt_flag_get(MODBUS_TIMER, TIMER_INT_FLAG_UP))
+//     {
+//         timer_interrupt_flag_clear(MODBUS_TIMER, TIMER_INT_FLAG_UP);
+
+//         /* 单次触发，进来后先停掉 */
+//         modbus_timer_stop();
+
+//         if ((s_modbus_rx_len > 0U) && (0U == s_modbus_rx_overflow))
+//         {
+//             s_modbus_frame_ready = 1U;
+
+//             TaskHandle_t task_modbus_parse_handle = NULL;
+//             task_modbus_parse_handle = get_modbus_parse_task_handle();
+
+//             if (task_modbus_parse_handle != NULL)
+//             {
+//                 vTaskNotifyGiveFromISR(task_modbus_parse_handle, &xHigherPriorityTaskWoken);
+//                 portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+//             }
+//         }
+//         else
+//         {
+//             /* 出错或空帧则清掉 */
+//             s_modbus_rx_len = 0U;
+//             s_modbus_frame_ready = 0U;
+//             s_modbus_rx_overflow = 0U;
+//         }
+//     }
+// }
 
 // /* EXTI0 中断服务函数 */
 // void EXTI0_IRQHandler(void)

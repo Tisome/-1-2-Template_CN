@@ -146,6 +146,7 @@ void task_key(void *parameter)
     }
 }
 
+// USE ISR FUNCTION
 void key_gpio_exti_handler(uint16_t GPIO_Pin)
 {
     static key_press_event_t key_events[KEY_NUMS][2] = {KEY_ID_NONE, KEY_EDGE_NONE, 0};
