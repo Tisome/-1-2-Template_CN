@@ -15,6 +15,8 @@
 #define TASK_ELOG_PRIO 3U
 #define TASK_MODBUS_PRIO 5U
 
+TaskHandle_t task_modbus_handler = NULL;
+
 static int task_test(void)
 {
     BaseType_t ret;
@@ -60,7 +62,7 @@ static int task_test(void)
                       TASK_MODBUS_STACK_SIZE,
                       NULL,
                       TASK_MODBUS_PRIO,
-                      NULL);
+                      &task_modbus_handler);
     if (ret != pdPASS)
     {
         log_e("create task_modbus failed");

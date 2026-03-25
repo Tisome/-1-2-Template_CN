@@ -5,6 +5,11 @@
 extern "C" {
 #endif
 
+#include "FreeRTOS.h"
+#include "task.h"
+
+extern TaskHandle_t task_modbus_handler;
+
 void task_clock(void *p);
 void task_elog(void *p);
 void task_e2prom(void *p);

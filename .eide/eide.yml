@@ -86,6 +86,7 @@ targets:
       defineList:
         - GD32F30X_HD
         - USE_STDPERIPH_DRIVER
+        - MODBUS_TEST
       incList:
         - .
         - User

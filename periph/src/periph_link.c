@@ -10,6 +10,8 @@ void hardware_periph_init()
 {
     SystemInit();
 
+    nvic_priority_group_set(NVIC_PRIGROUP_PRE4_SUB0);
+
     rcu_config();
 
     gpio_config();

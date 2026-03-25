@@ -41,7 +41,7 @@ void usart0_dma_modbus_init(uint8_t *modbus_rx_dma_buf, uint16_t buf_size)
     usart_transmit_config(USART0, USART_TRANSMIT_ENABLE);
 
     usart_interrupt_enable(USART0, USART_INT_IDLE);
-    nvic_irq_enable(USART0_IRQn, 5, 0);
+    nvic_irq_enable(USART0_IRQn, 7, 0);
 
     dma_deinit(DMA0, DMA_CH4);
     dma_struct_para_init(&dma_init_struct);

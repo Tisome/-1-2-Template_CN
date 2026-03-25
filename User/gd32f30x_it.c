@@ -264,6 +264,8 @@ void EXTI10_15_IRQHandler(void)
 /* =========================
  * USART0 ÖÐ¶Ï
  * ========================= */
+
+#ifndef MODBUS_TEST
 void USART0_IRQHandler(void)
 {
     volatile uint32_t temp;
@@ -294,6 +296,7 @@ void USART0_IRQHandler(void)
         }
     }
 }
+#endif
 
 // /* =========================
 //  * TIMER2 ÖÐ¶Ï

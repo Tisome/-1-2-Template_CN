@@ -16,8 +16,9 @@
 /* =========================
  * 测试阶段开关
  * ========================= */
-#define MODBUS_TEST_LINK_LAYER 1
-#define MODBUS_TEST_RX_FRAME 0
+#define MODBUS_TEST_LINK_LAYER_SEND 0
+#define MODBUS_TEST_LINK_LAYER_RECEIVE 0
+#define MODBUS_TEST_RX_FRAME 1
 #define MODBUS_TEST_PARSER 0
 #define MODBUS_TEST_EXECUTE 0
 #define MODBUS_TEST_RESPONSE 0
@@ -33,10 +34,9 @@
  * qty   = 0x0002
  * crc   = 0x0BC4 (低字节在前 -> C4 0B)
  */
-static const uint8_t g_test_req_read_hold_regs[] =
-    {
-        0x01, 0x03, 0x00, 0x00, 0x00, 0x02, 0xC4, 0x0B};
+static const uint8_t g_test_req_read_hold_regs[] = {0x01, 0x03, 0x00, 0x00, 0x00, 0x02, 0xC4, 0x0B};
 
+#if MODBUS_TEST_LINK_LAYER_SEND
 static void modbus_test_link_layer(void)
 {
     log_i("modbus test: link layer start");
@@ -48,7 +48,22 @@ static void modbus_test_link_layer(void)
     log_i("modbus test: link layer send %u bytes", (uint32_t)sizeof(tx_data));
     log_i("modbus test: link layer done");
 }
+#endif
 
+#if MODBUS_TEST_LINK_LAYER_RECEIVE
+static void modbus_test_link_layer_receive_callback(void)
+{
+    while (1)
+    {
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        log_i("receive a dma callback");
+        usart0_send_modbus_bytes(g_test_req_read_hold_regs, 8U);
+    }
+}
+
+#endif
+
+#if MODBUS_TEST_RX_FRAME
 static void modbus_test_rx_frame(void)
 {
     log_i("modbus test: rx frame start");
@@ -68,7 +83,9 @@ static void modbus_test_rx_frame(void)
 
     log_i("modbus test: rx frame done");
 }
+#endif
 
+#if MODBUS_TEST_PARSER
 static void modbus_test_parser(void)
 {
     log_i("modbus test: parser start");
@@ -100,7 +117,9 @@ static void modbus_test_parser(void)
 
     log_i("modbus test: parser done");
 }
+#endif
 
+#if MODBUS_TEST_EXECUTE
 static void modbus_test_execute(void)
 {
     log_i("modbus test: execute start");
@@ -127,7 +146,9 @@ static void modbus_test_execute(void)
     log_i("execute ok");
     log_i("modbus test: execute done");
 }
+#endif
 
+#if MODBUS_TEST_RESPONSE
 static void modbus_test_response(void)
 {
     log_i("modbus test: response start");
@@ -165,17 +186,24 @@ static void modbus_test_response(void)
     log_i("modbus test: response done");
 }
 
+#endif
+
 void task_modbus(void *p)
 {
     (void)p;
+    (void)g_test_req_read_hold_regs;
 
     log_i("task_modbus start");
 
     while (1)
     {
-#if MODBUS_TEST_LINK_LAYER
+#if MODBUS_TEST_LINK_LAYER_SEND
         modbus_test_link_layer();
         vTaskDelay(pdMS_TO_TICKS(1000));
+#endif
+
+#if MODBUS_TEST_LINK_LAYER_RECEIVE
+        modbus_test_link_layer_receive_callback();
 #endif
 
 #if MODBUS_TEST_RX_FRAME
@@ -198,13 +226,62 @@ void task_modbus(void *p)
         vTaskDelay(pdMS_TO_TICKS(1000));
 #endif
 
-#if (!MODBUS_TEST_LINK_LAYER) && \
-    (!MODBUS_TEST_RX_FRAME) &&   \
-    (!MODBUS_TEST_PARSER) &&     \
-    (!MODBUS_TEST_EXECUTE) &&    \
+#if (!MODBUS_TEST_LINK_LAYER_SEND) &&    \
+    (!MODBUS_TEST_LINK_LAYER_RECEIVE) && \
+    (!MODBUS_TEST_RX_FRAME) &&           \
+    (!MODBUS_TEST_PARSER) &&             \
+    (!MODBUS_TEST_EXECUTE) &&            \
     (!MODBUS_TEST_RESPONSE)
         log_i("task_modbus idle: no test enabled");
         vTaskDelay(pdMS_TO_TICKS(1000));
 #endif
     }
 }
+
+#if MODBUS_TEST
+
+#if MODBUS_TEST_LINK_LAYER_RECEIVE
+void USART0_IRQHandler(void)
+{
+    volatile uint32_t temp;
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+    if (RESET != usart_interrupt_flag_get(USART0, USART_INT_FLAG_IDLE))
+    {
+        // 清标志
+        temp = USART_STAT0(USART0);
+        temp = USART_DATA(USART0);
+        (void)temp;
+
+        if (task_modbus_handler != NULL)
+        {
+            vTaskNotifyGiveFromISR(task_modbus_handler, &xHigherPriorityTaskWoken);
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+        }
+    }
+}
+#endif
+
+#if MODBUS_TEST_RX_FRAME
+void USART0_IRQHandler(void)
+{
+    volatile uint32_t temp;
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+    if (RESET != usart_interrupt_flag_get(USART0, USART_INT_FLAG_IDLE))
+    {
+        // 清标志
+        temp = USART_STAT0(USART0);
+        temp = USART_DATA(USART0);
+        (void)temp;
+
+        if (task_modbus_handler != NULL)
+        {
+            vTaskNotifyGiveFromISR(task_modbus_handler, &xHigherPriorityTaskWoken);
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+        }
+    }
+}
+#endif
+
+#endif
