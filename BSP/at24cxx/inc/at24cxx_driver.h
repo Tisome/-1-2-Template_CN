@@ -13,16 +13,18 @@
 #define AT24CXX_DEFAULT_PAGE_SIZE                 32U                // 内部数据页大小(B)
 #define AT24CXX_DEFAULT_MEM_ADDR_SIZE             IIC_MEM_ADDR_16BIT // 内部数据地址长度
 #define AT24CXX_DEFAULT_MEM_SIZE_BYTES            4096U              // 内部数据存储容量
-#define AT24CXX_DEFAULT_WRITE_PAGE_TIMEOUT_MS     10U                // 写超时时间
-#define AT24CXX_DEFAULT_READY_TIMEOUT_MS          5U                 // ready测试超时时间
-#define AT24CXX_DEFAULT_READ_PIPE_PARA_TIMEOUT_MS 40U                // 读pipe para大小数据的超时时间
+#define AT24CXX_DEFAULT_WRITE_PAGE_TIMEOUT_MS     20U                // 写超时时间
+#define AT24CXX_DEFAULT_READY_TIMEOUT_MS          20U                // ready测试超时时间
+#define AT24CXX_DEFAULT_READ_PIPE_PARA_TIMEOUT_MS 100U               // 读pipe para大小数据的超时时间
 
 #elif E2PROM_AT24C08
-#define AT24CXX_DEFAULT_I2C_ADDR_7BIT         0x50U
-#define AT24CXX_DEFAULT_PAGE_SIZE             16U
-#define AT24CXX_DEFAULT_MEM_ADDR_SIZE         IIC_MEM_ADDR_8BIT
-#define AT24CXX_DEFAULT_MEM_SIZE_BYTES        1
-#define AT24CXX_DEFAULT_WRITE_CYCLE_TIMEOUTMS 10U
+#define AT24CXX_DEFAULT_I2C_ADDR_7BIT             0x50U
+#define AT24CXX_DEFAULT_PAGE_SIZE                 16U
+#define AT24CXX_DEFAULT_MEM_ADDR_SIZE             IIC_MEM_ADDR_8BIT
+#define AT24CXX_DEFAULT_MEM_SIZE_BYTES            1024U
+#define AT24CXX_DEFAULT_WRITE_PAGE_TIMEOUT_MS     10U
+#define AT24CXX_DEFAULT_READY_TIMEOUT_MS          10U
+#define AT24CXX_DEFAULT_READ_PIPE_PARA_TIMEOUT_MS 50U
 #endif
 
 typedef enum {
@@ -55,9 +57,8 @@ typedef struct
 
 at24cxx_status_t at24cxx_init_default(at24cxx_dev_info_t *dev);
 
-at24cxx_status_t at24cxx_is_ready(const at24cxx_dev_info_t *dev,
-                                  const iic_driver_t *iic_driver,
-                                  uint32_t trials);
+at24cxx_status_t at24cxx_wait_ready(const at24cxx_dev_info_t *dev,
+                                    const iic_driver_t *iic_driver);
 
 at24cxx_status_t at24cxx_read(const at24cxx_dev_info_t *dev,
                               const iic_driver_t *iic_driver,
@@ -76,8 +77,7 @@ typedef struct
     at24cxx_status_t (*pf_init)(at24cxx_dev_info_t *dev);
 
     at24cxx_status_t (*pf_is_ready)(const at24cxx_dev_info_t *dev,
-                                    const iic_driver_t *iic_driver,
-                                    uint32_t trials);
+                                    const iic_driver_t *iic_driver);
 
     at24cxx_status_t (*pf_read)(const at24cxx_dev_info_t *dev,
                                 const iic_driver_t *iic_driver,

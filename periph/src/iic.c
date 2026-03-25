@@ -24,6 +24,25 @@ static iic_status_t iic_wait_flag_set(uint32_t i2c_periph,
     return IIC_OK;
 }
 
+static void iic_deinit(uint32_t i2c_periph)
+{
+    switch (i2c_periph)
+    {
+    case I2C0:
+        /* reset I2C0 */
+        rcu_periph_reset_enable(RCU_I2C0RST);
+        rcu_periph_reset_disable(RCU_I2C0RST);
+        break;
+    case I2C1:
+        /* reset I2C1 */
+        rcu_periph_reset_enable(RCU_I2C1RST);
+        rcu_periph_reset_disable(RCU_I2C1RST);
+        break;
+    default:
+        break;
+    }
+}
+
 iic_status_t iic_init(uint32_t i2c_periph, uint32_t clock_speed)
 {
     /* 1. 时钟使能 在rcu.c中完成*/
@@ -40,11 +59,6 @@ iic_status_t iic_init(uint32_t i2c_periph, uint32_t clock_speed)
     i2c_ack_config(i2c_periph, I2C_ACK_ENABLE);
 
     return IIC_OK;
-}
-
-void iic_deinit(uint32_t i2c_periph)
-{
-    i2c_deinit(i2c_periph);
 }
 
 static uint32_t iic_get_tick_ms(void)

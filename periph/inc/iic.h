@@ -59,8 +59,6 @@ typedef struct
 iic_status_t iic_init(uint32_t i2c_periph,
                       uint32_t clock_speed);
 
-void iic_deinit(uint32_t i2c_periph);
-
 iic_status_t iic_is_device_ready(uint32_t i2c_periph,
                                  uint8_t dev_addr_7bit,
                                  uint32_t timeout_ms);

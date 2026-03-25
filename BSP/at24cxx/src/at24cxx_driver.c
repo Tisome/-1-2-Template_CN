@@ -1,3 +1,6 @@
+#include "FreeRTOS.h"
+#include "task.h"
+
 #include "at24cxx_driver.h"
 #include "iic.h"
 
@@ -119,52 +122,25 @@ at24cxx_status_t at24cxx_init_default(at24cxx_dev_info_t *dev)
 
     return AT24CXX_OK;
 }
-
-at24cxx_status_t at24cxx_is_ready(const at24cxx_dev_info_t *dev,
-                                  const iic_driver_t *iic_driver,
-                                  uint32_t trials)
+at24cxx_status_t at24cxx_wait_ready(const at24cxx_dev_info_t *dev,
+                                    const iic_driver_t *iic_driver)
 {
-    uint32_t i;
-    iic_status_t iic_ret;
-    at24cxx_status_t at24cxx_ret;
+    uint32_t start = xTaskGetTickCount();
+    uint32_t timeout_tick = pdMS_TO_TICKS(dev->ready_timeout_ms);
 
-    if (dev == NULL)
+    while ((xTaskGetTickCount() - start) < timeout_tick)
     {
-        log_e("AT24CXX DEV INFO NO EXIST");
-        return AT24CXX_ERROR_RESOURCE;
-    }
-
-    at24cxx_ret = at24cxx_check_iic_driver(iic_driver);
-    if (at24cxx_ret != AT24CXX_OK)
-    {
-        return at24cxx_ret;
-    }
-
-    if (trials == 0U)
-    {
-        trials = 1U;
-    }
-
-    /* 多次尝试 */
-    for (i = 0; i < trials; i++)
-    {
-        iic_ret = iic_driver->pf_iic_is_ready(iic_driver->i2c_periph,
-                                              dev->i2c_addr_7bit,
-                                              dev->ready_timeout_ms);
-
-        if (iic_ret == IIC_OK)
+        if (iic_driver->pf_iic_is_ready(iic_driver->i2c_periph,
+                                        dev->i2c_addr_7bit,
+                                        1U) == IIC_OK)
         {
-            return AT24CXX_OK; // 只要有一次成功，立即返回
+            return AT24CXX_OK;
         }
 
-        /* 可选：这里可以加一点延时（推荐） */
-        // vTaskDelay(pdMS_TO_TICKS(1));
+        vTaskDelay(pdMS_TO_TICKS(1));
     }
 
-    /* 所有尝试都失败 */
-    log_e("AT24CXX IS NOT READY (trials=%u)", trials);
-
-    return at24cxx_status_from_iic_status(iic_ret);
+    return AT24CXX_TIMEOUT;
 }
 
 at24cxx_status_t at24cxx_read(const at24cxx_dev_info_t *dev,
@@ -187,6 +163,12 @@ at24cxx_status_t at24cxx_read(const at24cxx_dev_info_t *dev,
     }
 
     at24cxx_ret = at24cxx_check_iic_driver(iic_driver);
+    if (at24cxx_ret != AT24CXX_OK)
+    {
+        return at24cxx_ret;
+    }
+
+    at24cxx_ret = at24cxx_wait_ready(dev, iic_driver);
     if (at24cxx_ret != AT24CXX_OK)
     {
         return at24cxx_ret;
@@ -259,14 +241,10 @@ at24cxx_status_t at24cxx_write(const at24cxx_dev_info_t *dev,
             return at24cxx_ret;
         }
 
-        iic_ret = iic_driver->pf_iic_is_ready(iic_driver->i2c_periph,
-                                              dev->i2c_addr_7bit,
-                                              dev->ready_timeout_ms);
-
-        at24cxx_ret = at24cxx_status_from_iic_status(iic_ret);
+        at24cxx_ret = at24cxx_wait_ready(dev, iic_driver);
         if (at24cxx_ret != AT24CXX_OK)
         {
-            log_e("AT24CXX WRITE ERROR");
+            log_e("AT24CXX WRITE WAIT READY ERROR");
             return at24cxx_ret;
         }
 
@@ -285,7 +263,7 @@ void at24cxx_driver_init(at24cxx_driver_t *driver)
     }
 
     driver->pf_init = at24cxx_init_default;
-    driver->pf_is_ready = at24cxx_is_ready;
+    driver->pf_is_ready = at24cxx_wait_ready;
     driver->pf_read = at24cxx_read;
     driver->pf_write = at24cxx_write;
 }
