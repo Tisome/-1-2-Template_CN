@@ -8,6 +8,7 @@ extern "C" {
 void task_clock(void *p);
 void task_elog(void *p);
 void task_e2prom(void *p);
+void task_modbus(void *p);
 
 void does_it_work(void);
 

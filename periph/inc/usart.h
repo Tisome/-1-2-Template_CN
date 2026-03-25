@@ -19,7 +19,7 @@ uint16_t usart0_dma_get_pos(void);
 void usart0_dma_modbus_init(uint8_t *modbus_rx_dma_buf, uint16_t buf_size);
 
 /* RS485 / Modbus 发送 */
-void usart0_send_modbus_bytes(uint8_t *buf, uint32_t len);
+void usart0_send_modbus_bytes(const uint8_t *buf, uint32_t len);
 
 #ifdef __cplusplus
 }

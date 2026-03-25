@@ -14,7 +14,7 @@ void hardware_periph_init()
 
     gpio_config();
 
-    // // 初始化usart0-dma写入后的数据地址
-    // create_empty_circular_buffer(g_modbus_rx_cb);
-    // usart0_dma_modbus_init(g_modbus_rx_cb->buffer, MODBUS_RX_BUF_SIZE);
+    // 初始化usart0-dma写入后的数据地址
+    create_empty_circular_buffer(g_modbus_rx_cb);
+    usart0_dma_modbus_init(g_modbus_rx_cb->buffer, MODBUS_RX_BUF_SIZE);
 }
