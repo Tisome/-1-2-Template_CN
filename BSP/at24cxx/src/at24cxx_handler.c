@@ -60,7 +60,7 @@ static eeprom_status_t eeprom_access_sync_internal(eeprom_operation_t operation,
     }
 
     i2c_status = i2c_driver.pf_iic_init(i2c_driver.i2c_periph,
-                                        100000U);
+                                        E2PROM_I2C_SPEED_CLOCK);
     if (i2c_status != IIC_OK)
     {
         return E2PROM_ERROR_RESOURCE;
