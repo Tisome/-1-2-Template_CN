@@ -31,14 +31,13 @@
 #define RCU_GPIO_RS485_CTRL_PORT    RCU_GPIOC
 
 /*==================== Peripheral Clock ====================*/
-#define RCU_GPIO_AFIO        RCU_AF
+#define RCU_GPIO_AFIO      RCU_AF
 
-#define RCU_FPGA_SPI         RCU_SPI1
-#define RCU_TFT_SPI          RCU_SPI2
-#define RCU_EEPROM_I2C       RCU_I2C0
-#define RCU_MODBUS_USART     RCU_USART0
-#define RCU_DMA0_FOR_SPI1    RCU_DMA0
-#define RCU_TIMER_FOR_MODBUS RCU_TIMER2
+#define RCU_FPGA_SPI       RCU_SPI1
+#define RCU_TFT_SPI        RCU_SPI2
+#define RCU_EEPROM_I2C     RCU_I2C0
+#define RCU_MODBUS_USART   RCU_USART0
+#define RCU_DMA0_FOR_UASRT RCU_DMA0
 
 /*==================== Optional Peripheral Clock ====================*/
 

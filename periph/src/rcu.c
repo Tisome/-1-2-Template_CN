@@ -42,8 +42,7 @@ void rcu_config(void)
     rcu_periph_clock_enable(RCU_TFT_SPI);
     rcu_periph_clock_enable(RCU_EEPROM_I2C);
     rcu_periph_clock_enable(RCU_MODBUS_USART);
-    rcu_periph_clock_enable(RCU_DMA0_FOR_SPI1);
-    rcu_periph_clock_enable(RCU_TIMER_FOR_MODBUS);
+    rcu_periph_clock_enable(RCU_DMA0_FOR_UASRT);
 
     /*==================== Optional Peripheral Clock Enable ====================*/
     /* 如果当前工程没用到，可以先注释掉，等后面真正用时再打开 */

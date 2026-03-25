@@ -164,6 +164,17 @@ void DebugMon_Handler(void)
 //     xPortSysTickHandler();
 // }
 
+/*!
+    \brief      this function handles SysTick exception
+    \param[in]  none
+    \param[out] none
+    \retval     none
+*/
+// void SysTick_Handler(void)
+// {
+//     //
+// }
+
 // 以下为中断服务函数，用户可根据需要，在对应函数内添加内容
 
 void fpga_int_gpio_exti_handler(uint32_t GPIO_PIN_x)
