@@ -16,14 +16,57 @@
 
 extern circular_buf_t *g_modbus_rx_cb;
 
-uint16_t modbus_frame_is_ready(circular_buf_t *p_buffer)
+uint8_t modbus_frame_is_ready(circular_buf_t *p_buffer)
 {
     if (p_buffer == NULL)
     {
-        log_e("p_buffer == NULL | modbus buf not ready");
         return 0U;
     }
-    return p_buffer->frame_ready;
+
+    return (p_buffer->frame_count > 0U) ? 1U : 0U;
+}
+
+uint8_t modbus_push_frame_from_isr(circular_buf_t *p_buffer, uint16_t frame_start, uint16_t frame_end)
+{
+    uint8_t next_w;
+
+    if (p_buffer == NULL)
+    {
+        return 0U;
+    }
+
+    /* 空帧直接丢掉 */
+    if (frame_start == frame_end)
+    {
+        return 0U;
+    }
+
+    if (frame_start >= CIRCULAR_BUF_SIZE || frame_end >= CIRCULAR_BUF_SIZE)
+    {
+        return 0U;
+    }
+
+    if (p_buffer->frame_count >= MODBUS_FRAME_FIFO_SIZE)
+    {
+        /* FIFO满了，丢帧 */
+        return 0U;
+    }
+
+    next_w = p_buffer->frame_w;
+
+    p_buffer->frame_fifo[next_w].start = frame_start;
+    p_buffer->frame_fifo[next_w].end = frame_end;
+
+    next_w++;
+    if (next_w >= MODBUS_FRAME_FIFO_SIZE)
+    {
+        next_w = 0U;
+    }
+
+    p_buffer->frame_w = next_w;
+    p_buffer->frame_count++;
+
+    return 1U;
 }
 
 uint16_t modbus_get_frame(circular_buf_t *p_buffer, uint8_t *buf, uint16_t max_len)
@@ -31,23 +74,25 @@ uint16_t modbus_get_frame(circular_buf_t *p_buffer, uint8_t *buf, uint16_t max_l
     uint16_t frame_start;
     uint16_t frame_end;
     uint16_t len;
+    uint8_t frame_r;
 
     if ((p_buffer == NULL) || (buf == NULL) || (max_len == 0U))
     {
         return 0U;
     }
 
-    if (modbus_frame_is_ready(p_buffer) != 1U)
+    __disable_irq();
+
+    if (p_buffer->frame_count == 0U)
     {
+        __enable_irq();
         return 0U;
     }
 
-    __disable_irq();
+    frame_r = p_buffer->frame_r;
+    frame_start = p_buffer->frame_fifo[frame_r].start;
+    frame_end = p_buffer->frame_fifo[frame_r].end;
 
-    frame_start = p_buffer->frame_start;
-    frame_end = p_buffer->frame_end;
-
-    /* 先算这一帧长度 */
     if (frame_end > frame_start)
     {
         len = frame_end - frame_start;
@@ -58,39 +103,51 @@ uint16_t modbus_get_frame(circular_buf_t *p_buffer, uint8_t *buf, uint16_t max_l
     }
     else
     {
-        /* frame_end == frame_start，表示空帧 */
         len = 0U;
     }
 
-    /* 防止用户给的buf太小 */
-    if (len > max_len)
+    if (len == 0U || len > max_len)
     {
+        /* 丢弃这一帧 */
+        frame_r++;
+        if (frame_r >= MODBUS_FRAME_FIFO_SIZE)
+        {
+            frame_r = 0U;
+        }
+
+        p_buffer->frame_r = frame_r;
+        p_buffer->frame_count--;
+        p_buffer->read_pos = frame_end;
+
         __enable_irq();
         return 0U;
     }
 
-    /* 拷贝数据到线性buf */
-    if (len > 0U)
+    if (frame_end > frame_start)
     {
-        if (frame_end > frame_start)
-        {
-            /* 情况1：没有回绕，直接拷一段 */
-            memcpy(buf, &p_buffer->buffer[frame_start], len);
-        }
-        else
-        {
-            /* 情况2：回绕了，分两段拷贝 */
-            uint16_t len1 = CIRCULAR_BUF_SIZE - frame_start;
-            uint16_t len2 = frame_end;
+        memcpy(buf, &p_buffer->buffer[frame_start], len);
+    }
+    else
+    {
+        uint16_t len1 = CIRCULAR_BUF_SIZE - frame_start;
+        uint16_t len2 = frame_end;
 
-            memcpy(buf, &p_buffer->buffer[frame_start], len1);
-            memcpy(&buf[len1], &p_buffer->buffer[0], len2);
-        }
+        memcpy(buf, &p_buffer->buffer[frame_start], len1);
+        memcpy(&buf[len1], &p_buffer->buffer[0], len2);
     }
 
-    /* 取完这一帧后，清掉ready标志，并把读位置推进到frame_end */
+    /* 出队 */
+    frame_r++;
+    if (frame_r >= MODBUS_FRAME_FIFO_SIZE)
+    {
+        frame_r = 0U;
+    }
+
+    p_buffer->frame_r = frame_r;
+    p_buffer->frame_count--;
+
+    /* 真正处理完这一帧，read_pos推进到frame_end */
     p_buffer->read_pos = frame_end;
-    p_buffer->frame_ready = 0U;
 
     __enable_irq();
 
@@ -101,6 +158,11 @@ uint16_t modbus_get_frame(circular_buf_t *p_buffer, uint8_t *buf, uint16_t max_l
 // 同时设置状态为IDLE
 void reset_modbus_parser(modbus_parser_t *parser)
 {
+    if (parser == NULL)
+    {
+        log_e("parser == NULL");
+        return;
+    }
     memset(parser, 0, sizeof(modbus_parser_t));
     parser->state = MODBUS_STATE_IDLE;
 }
@@ -149,6 +211,7 @@ void task_modbus_parse(void *parameter)
                     parser.calculated_crc = 0xFFFF;
                     parser.calculated_crc = modbus_crc_update(parser.calculated_crc, byte);
                 }
+                break;
             case MODBUS_STATE_ADDRESS_DONE__FUNCTION_START:
                 // 地址字节已经被处理，现在在处理功能码
                 parser.function = byte;

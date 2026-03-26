@@ -5,6 +5,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include "modbus_crc.h"
 #include "modbus_frame_process.h"
 #include "modbus_parse.h"
 
@@ -18,10 +19,12 @@
  * ========================= */
 #define MODBUS_TEST_LINK_LAYER_SEND 0
 #define MODBUS_TEST_LINK_LAYER_RECEIVE 0
-#define MODBUS_TEST_RX_FRAME 1
-#define MODBUS_TEST_PARSER 0
+#define MODBUS_TEST_RX_FRAME 0
+#define MODBUS_TEST_PARSER 1
 #define MODBUS_TEST_EXECUTE 0
 #define MODBUS_TEST_RESPONSE 0
+
+#define MODBUS_TEST_SLAVE_ADDR 0x01
 
 /* =========================
  * 测试用静态数据
@@ -97,36 +100,226 @@ static void modbus_test_rx_frame(void)
 #endif
 
 #if MODBUS_TEST_PARSER
-static void modbus_test_parser(void)
+
+static void test_process_modbus_frame(modbus_parser_t *parser)
 {
-    log_i("modbus test: parser start");
-
-    modbus_parser_t parser;
-    memset(&parser, 0, sizeof(parser));
-
-    /* 按你自己的解析接口替换 */
-    /* int ret = modbus_parse_frame(&parser,
-                                 g_test_req_read_hold_regs,
-                                 sizeof(g_test_req_read_hold_regs)); */
-
-    /* 这里只写结构思路 */
-    int ret = 0;
-
-    if (ret != 0)
+    if (parser->address != MODBUS_TEST_SLAVE_ADDR)
     {
-        log_e("modbus parser failed, ret=%d", ret);
+        log_e("Modbus address mismatch");
         return;
     }
 
-    /* 假设 parser 里已经有这些字段 */
-    log_i("parser ok");
-    /* log_i("addr=%u func=0x%02X start=%u qty=%u",
-           parser.slave_addr,
-           parser.function_code,
-           parser.start_addr,
-           parser.quantity); */
+    switch (parser->function)
+    {
+    case MODBUS_FUNC_READ_COILS:
+        log_i("MODBUS_FUNC_READ_COILS");
+        break;
 
-    log_i("modbus test: parser done");
+    case MODBUS_FUNC_READ_DISCRETE_INPUTS:
+        log_i("MODBUS_FUNC_READ_DISCRETE_INPUTS");
+        break;
+
+    case MODBUS_FUNC_READ_HOLDING_REGISTERS:
+        log_i("MODBUS_FUNC_READ_HOLDING_REGISTERS");
+        break;
+
+    case MODBUS_FUNC_READ_INPUT_REGISTERS:
+        log_i("MODBUS_FUNC_READ_INPUT_REGISTERS");
+        break;
+
+    case MODBUS_FUNC_WRITE_SINGLE_COIL:
+        log_i("MODBUS_FUNC_WRITE_SINGLE_COIL");
+        break;
+
+    case MODBUS_FUNC_WRITE_SINGLE_REGISTER:
+        log_i("MODBUS_FUNC_WRITE_SINGLE_REGISTER");
+        break;
+
+    case MODBUS_FUNC_WRITE_MULTIPLE_REGISTERS:
+        log_i("MODBUS_FUNC_WRITE_MULTIPLE_REGISTERS");
+        break;
+
+    default:
+        log_i("MODBUS_EXCEPTION_ILLEGAL_FUNCTION");
+        break;
+    }
+}
+
+static int modbus_parse_bytes(modbus_parser_t *parser, const uint8_t *buf, uint16_t raw_len)
+{
+    uint8_t byte = 0U;
+
+    if ((parser == NULL) || (buf == NULL) || (raw_len == 0U))
+    {
+        log_e("modbus_parse_bytes param error");
+        return -1;
+    }
+
+    reset_modbus_parser(parser);
+
+    for (uint16_t i = 0; i < raw_len; i++)
+    {
+        byte = buf[i];
+
+        switch (parser->state)
+        {
+        case MODBUS_STATE_IDLE:
+            if (byte != MODBUS_TEST_SLAVE_ADDR)
+            {
+                log_e("addr mismatch: recv=0x%02X expect=0x%02X", byte, MODBUS_TEST_SLAVE_ADDR);
+                break;
+            }
+
+            parser->state = MODBUS_STATE_ADDRESS_DONE__FUNCTION_START;
+            parser->address = byte;
+            parser->calculated_crc = 0xFFFF;
+            parser->calculated_crc = modbus_crc_update(parser->calculated_crc, byte);
+
+            log_i("address ok: 0x%02X", parser->address);
+            break;
+
+        case MODBUS_STATE_ADDRESS_DONE__FUNCTION_START:
+            parser->function = byte;
+            parser->calculated_crc = modbus_crc_update(parser->calculated_crc, byte);
+
+            switch (parser->function)
+            {
+            case MODBUS_FUNC_READ_COILS:
+            case MODBUS_FUNC_READ_DISCRETE_INPUTS:
+            case MODBUS_FUNC_READ_HOLDING_REGISTERS:
+            case MODBUS_FUNC_READ_INPUT_REGISTERS:
+            case MODBUS_FUNC_WRITE_SINGLE_COIL:
+            case MODBUS_FUNC_WRITE_SINGLE_REGISTER:
+                parser->expected_data_length = 4;
+                break;
+
+            case MODBUS_FUNC_WRITE_MULTIPLE_REGISTERS:
+                parser->expected_data_length = 5;
+                break;
+
+            default:
+                log_e("unsupported function: 0x%02X", parser->function);
+                reset_modbus_parser(parser);
+                return -2;
+            }
+
+            parser->data_length = 0;
+            parser->state = MODBUS_STATE_FUNCTION_DONE__DATA_START;
+
+            log_i("function ok: 0x%02X", parser->function);
+
+            break;
+
+        case MODBUS_STATE_FUNCTION_DONE__DATA_START:
+            if (parser->data_length >= sizeof(parser->data))
+            {
+                log_e("Modbus data buffer overflow");
+                reset_modbus_parser(parser);
+                return -3;
+            }
+
+            parser->data[parser->data_length++] = byte;
+            parser->calculated_crc = modbus_crc_update(parser->calculated_crc, byte);
+
+            if ((parser->function == MODBUS_FUNC_WRITE_MULTIPLE_REGISTERS) &&
+                (parser->data_length == 5))
+            {
+                uint8_t byte_cnt = parser->data[4];
+                parser->expected_data_length = (uint16_t)byte_cnt + 5U;
+            }
+
+            if (parser->data_length == parser->expected_data_length)
+            {
+                parser->state = MODBUS_STATE_DATA_DONE__CRC_LOW;
+                log_i("data_length=%u expected=%u", parser->data_length, parser->expected_data_length);
+            }
+            break;
+
+        case MODBUS_STATE_DATA_DONE__CRC_LOW:
+            parser->crc = (uint16_t)byte;
+            parser->state = MODBUS_STATE_CRC_LOW_DONE__CRC_HIGH;
+            log_i("crc low=0x%02X", byte);
+            break;
+
+        case MODBUS_STATE_CRC_LOW_DONE__CRC_HIGH:
+            parser->crc |= ((uint16_t)byte << 8);
+
+            if (parser->calculated_crc == parser->crc)
+            {
+                log_i("modbus crc ok");
+                log_i("crc high=0x%02X", byte);
+                test_process_modbus_frame(parser);
+                reset_modbus_parser(parser);
+                return 0;
+            }
+            else
+            {
+                log_e("modbus crc error calc=0x%04X recv=0x%04X",
+                      parser->calculated_crc, parser->crc);
+                reset_modbus_parser(parser);
+                return -4;
+            }
+
+        default:
+            log_e("unknown parser state");
+            reset_modbus_parser(parser);
+            return -5;
+        }
+    }
+
+    log_e("frame incomplete, raw_len=%u", raw_len);
+    return -6;
+}
+
+static void modbus_test_parser(void)
+{
+    uint8_t buf[MODBUS_RX_BUF_SIZE];
+    uint16_t raw_len = 0U;
+    modbus_parser_t parser;
+    int ret;
+
+    while (1)
+    {
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
+        log_i("receive a dma callback");
+
+        if (g_modbus_rx_cb == NULL)
+        {
+            log_e("g_modbus_rx_cb == NULL");
+            return;
+        }
+
+        if (0U == modbus_frame_is_ready(g_modbus_rx_cb))
+        {
+            log_e("modbus frame is not ready");
+            return;
+        }
+
+        raw_len = modbus_get_frame(g_modbus_rx_cb, buf, MODBUS_RX_BUF_SIZE);
+        if (raw_len == 0U)
+        {
+            log_e("modbus_get_frame returned 0");
+            return;
+        }
+
+        log_i("uart frame received, len=%u", raw_len);
+
+        // for (uint16_t i = 0; i < raw_len; i++)
+        // {
+        //     log_i("buf[%u] = 0x%02X", i, buf[i]);
+        // }
+
+        ret = modbus_parse_bytes(&parser, buf, raw_len);
+        if (ret != 0)
+        {
+            log_e("modbus parse failed, ret=%d", ret);
+        }
+        else
+        {
+            log_i("modbus parse success");
+        }
+    }
 }
 #endif
 
@@ -296,6 +489,7 @@ void USART0_IRQHandler(void)
             log_e("g_modbus_rx_cb == NULL");
             return;
         }
+
         g_modbus_rx_cb->frame_start = g_modbus_rx_cb->read_pos;
         g_modbus_rx_cb->frame_end = dma_pos;
         g_modbus_rx_cb->frame_ready = 1;
@@ -307,6 +501,37 @@ void USART0_IRQHandler(void)
         }
     }
 }
+#endif
+
+#if MODBUS_TEST_PARSER
+void USART0_IRQHandler(void)
+{
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+    if (SET == usart_interrupt_flag_get(USART0, USART_INT_FLAG_IDLE))
+    {
+        uint16_t dma_pos;
+        uint16_t frame_start;
+
+        /* 清IDLE标志 */
+        usart_data_receive(USART0);
+
+        dma_pos = usart0_dma_get_pos();
+        frame_start = g_modbus_rx_cb->read_pos;
+
+        /* 把这一帧压入FIFO */
+        if (modbus_push_frame_from_isr(g_modbus_rx_cb, frame_start, dma_pos) == 1U)
+        {
+            vTaskNotifyGiveFromISR(task_modbus_handler, &xHigherPriorityTaskWoken);
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+        }
+        else
+        {
+            log_i("push modbus frame in isr fail");
+        }
+    }
+}
+
 #endif
 
 #endif

@@ -3,15 +3,39 @@
 
 #include <stdint.h>
 
-#define CIRCULAR_BUF_SIZE 128
+#define CIRCULAR_BUF_SIZE 128U
 
-typedef struct {
+typedef struct
+{
+    uint16_t start;
+    uint16_t end;
+} modbus_frame_desc_t;
+
+#define MODBUS_FRAME_FIFO_SIZE 8U
+
+typedef struct
+{
     uint8_t buffer[CIRCULAR_BUF_SIZE];
-    volatile uint16_t read_pos;    // parse任务读到哪里
-    volatile uint16_t frame_start; // 当前帧起点
-    volatile uint16_t frame_end;   // 当前帧结束
-    volatile uint16_t frame_ready; // 有一帧待解析
+
+    volatile uint16_t read_pos;
+
+    /* 帧描述FIFO */
+    modbus_frame_desc_t frame_fifo[MODBUS_FRAME_FIFO_SIZE];
+    volatile uint8_t frame_w;
+    volatile uint8_t frame_r;
+    volatile uint8_t frame_count;
+
 } circular_buf_t;
+
+// typedef struct {
+//     uint8_t buffer[CIRCULAR_BUF_SIZE];
+//     volatile uint16_t read_pos;    // parse任务读到哪里
+//     volatile uint16_t frame_start; // 当前帧起点
+//     volatile uint16_t frame_end;   // 当前帧结束
+//     volatile uint16_t frame_ready; // 有一帧待解析
+// } circular_buf_t;
+
+circular_buf_t *modbus_buf_init(void);
 
 circular_buf_t *create_empty_circular_buffer(void);
 

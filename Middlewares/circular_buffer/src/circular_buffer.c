@@ -6,6 +6,20 @@
 
 circular_buf_t *g_modbus_rx_cb = NULL;
 
+circular_buf_t *modbus_buf_init(void)
+{
+    static circular_buf_t s_modbus_buf;
+
+    memset(&s_modbus_buf, 0, sizeof(s_modbus_buf));
+
+    s_modbus_buf.read_pos = 0U;
+    s_modbus_buf.frame_w = 0U;
+    s_modbus_buf.frame_r = 0U;
+    s_modbus_buf.frame_count = 0U;
+
+    return &s_modbus_buf;
+}
+
 circular_buf_t *create_empty_circular_buffer(void)
 {
     circular_buf_t *p_buffer = (circular_buf_t *)malloc(sizeof(circular_buf_t));
