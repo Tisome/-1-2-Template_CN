@@ -45,6 +45,12 @@ OF SUCH DAMAGE.
 
 #include "circular_buffer.h"
 
+#include "does_it_work.h"
+
+#include "modbus_parse.h"
+
+#include "elog.h"
+
 #include "bsp_key.h"
 
 #include "gpio.h"
@@ -177,7 +183,7 @@ void DebugMon_Handler(void)
 
 // 以下为中断服务函数，用户可根据需要，在对应函数内添加内容
 
-void fpga_int_gpio_exti_handler(uint32_t GPIO_PIN_x)
+static void fpga_int_gpio_exti_handler(uint32_t GPIO_PIN_x)
 {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     if (GPIO_PIN_x == FPGA_INT_GPIO_PIN)
@@ -192,7 +198,7 @@ void fpga_int_gpio_exti_handler(uint32_t GPIO_PIN_x)
     }
 }
 
-void GPIO_EXTI_IRQHandler(uint32_t GPIO_PIN_x)
+static void GPIO_EXTI_IRQHandler(uint32_t GPIO_PIN_x)
 {
     switch (GPIO_PIN_x)
     {
@@ -268,31 +274,32 @@ void EXTI10_15_IRQHandler(void)
 #ifndef MODBUS_TEST
 void USART0_IRQHandler(void)
 {
-    volatile uint32_t temp;
-    uint16_t dma_pos;
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
-    if (RESET != usart_interrupt_flag_get(USART0, USART_INT_FLAG_IDLE))
+    if (SET == usart_interrupt_flag_get(USART0, USART_INT_FLAG_IDLE))
     {
-        // 清标志
-        temp = USART_STAT0(USART0);
-        temp = USART_DATA(USART0);
-        (void)temp;
+        uint16_t dma_pos;
+        uint16_t frame_start;
 
-        // 获得dma当前写到的位置
+        /* 清IDLE标志 */
+        usart_data_receive(USART0);
+
         dma_pos = usart0_dma_get_pos();
+        frame_start = g_modbus_rx_cb->read_pos;
 
-        g_modbus_rx_cb->frame_start = g_modbus_rx_cb->read_pos;
-        g_modbus_rx_cb->frame_end = dma_pos;
-        g_modbus_rx_cb->frame_ready = 1;
-
-        TaskHandle_t task_modbus_parse_handle = NULL;
-        task_modbus_parse_handle = get_modbus_parse_task_handle();
-
-        if (task_modbus_parse_handle != NULL)
+        /* 把这一帧压入FIFO */
+        TaskHandle_t task_modbus_test_handle = get_modbus_task_handle();
+        if (task_modbus_test_handle != NULL)
         {
-            vTaskNotifyGiveFromISR(task_modbus_parse_handle, &xHigherPriorityTaskWoken);
-            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+            if (modbus_push_frame_from_isr(g_modbus_rx_cb, frame_start, dma_pos) == 1U)
+            {
+                vTaskNotifyGiveFromISR(task_modbus_test_handle, &xHigherPriorityTaskWoken);
+                portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+            }
+            else
+            {
+                log_i("push modbus frame in isr fail");
+            }
         }
     }
 }
@@ -305,21 +312,16 @@ void USART0_IRQHandler(void)
 // void TIMER2_IRQHandler(void)
 // {
 //     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-
 //     if (SET == timer_interrupt_flag_get(MODBUS_TIMER, TIMER_INT_FLAG_UP))
 //     {
 //         timer_interrupt_flag_clear(MODBUS_TIMER, TIMER_INT_FLAG_UP);
-
 //         /* 单次触发，进来后先停掉 */
 //         modbus_timer_stop();
-
 //         if ((s_modbus_rx_len > 0U) && (0U == s_modbus_rx_overflow))
 //         {
 //             s_modbus_frame_ready = 1U;
-
 //             TaskHandle_t task_modbus_parse_handle = NULL;
 //             task_modbus_parse_handle = get_modbus_parse_task_handle();
-
 //             if (task_modbus_parse_handle != NULL)
 //             {
 //                 vTaskNotifyGiveFromISR(task_modbus_parse_handle, &xHigherPriorityTaskWoken);

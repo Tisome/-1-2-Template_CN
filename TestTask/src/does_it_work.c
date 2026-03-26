@@ -17,8 +17,8 @@
 #define TASK_MODBUS_PRIO 5U
 #define TASK_SPI_RX_PRIO 5U
 
+TaskHandle_t task_spi_rx_handler = NULL;
 TaskHandle_t task_modbus_handler = NULL;
-Taskhandle_t task_spi_rx_handler = NULL;
 
 static int task_test(void)
 {
@@ -65,7 +65,7 @@ static int task_test(void)
                       TASK_SPI_RX_STACK_SIZE,
                       NULL,
                       TASK_SPI_RX_PRIO,
-                      task_spi_rx_handler);
+                      &task_spi_rx_handler);
     if (ret != pdPASS)
     {
         log_e("create task_spi_rx failed");
@@ -90,6 +90,16 @@ static int task_test(void)
     {
         /* 不应该执行到这里 */
     }
+}
+
+TaskHandle_t get_spi_rx_task_handle(void)
+{
+    return task_spi_rx_handler;
+}
+
+TaskHandle_t get_modbus_task_handle(void)
+{
+    return task_modbus_handler;
 }
 
 void does_it_work(void)

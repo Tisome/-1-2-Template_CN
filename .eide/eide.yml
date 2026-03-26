@@ -86,7 +86,6 @@ targets:
       defineList:
         - GD32F30X_HD
         - USE_STDPERIPH_DRIVER
-        - MODBUS_TEST
       incList:
         - .
         - User
@@ -115,7 +114,9 @@ targets:
         - BSP/KEY/inc
         - BSP/at24cxx/inc
       libList: []
-    excludeList: []
+    excludeList:
+      - Task/src
+      - Task/inc
     toolchain: AC5
     toolchainConfigMap:
       AC5:

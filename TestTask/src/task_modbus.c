@@ -457,9 +457,10 @@ void USART0_IRQHandler(void)
         temp = USART_DATA(USART0);
         (void)temp;
 
-        if (task_modbus_handler != NULL)
+        TaskHandle_t task_modbus_test_handle = get_modbus_task_handle();
+        if (task_modbus_test_handle != NULL)
         {
-            vTaskNotifyGiveFromISR(task_modbus_handler, &xHigherPriorityTaskWoken);
+            vTaskNotifyGiveFromISR(task_modbus_test_handle, &xHigherPriorityTaskWoken);
             portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
         }
     }
@@ -494,9 +495,10 @@ void USART0_IRQHandler(void)
         g_modbus_rx_cb->frame_end = dma_pos;
         g_modbus_rx_cb->frame_ready = 1;
 
-        if (task_modbus_handler != NULL)
+        TaskHandle_t task_modbus_test_handle = get_modbus_task_handle();
+        if (task_modbus_test_handle != NULL)
         {
-            vTaskNotifyGiveFromISR(task_modbus_handler, &xHigherPriorityTaskWoken);
+            vTaskNotifyGiveFromISR(task_modbus_test_handle, &xHigherPriorityTaskWoken);
             portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
         }
     }
@@ -520,14 +522,18 @@ void USART0_IRQHandler(void)
         frame_start = g_modbus_rx_cb->read_pos;
 
         /* 把这一帧压入FIFO */
-        if (modbus_push_frame_from_isr(g_modbus_rx_cb, frame_start, dma_pos) == 1U)
+        TaskHandle_t task_modbus_test_handle = get_modbus_task_handle();
+        if (task_modbus_test_handle != NULL)
         {
-            vTaskNotifyGiveFromISR(task_modbus_handler, &xHigherPriorityTaskWoken);
-            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-        }
-        else
-        {
-            log_i("push modbus frame in isr fail");
+            if (modbus_push_frame_from_isr(g_modbus_rx_cb, frame_start, dma_pos) == 1U)
+            {
+                vTaskNotifyGiveFromISR(task_modbus_test_handle, &xHigherPriorityTaskWoken);
+                portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+            }
+            else
+            {
+                log_i("push modbus frame in isr fail");
+            }
         }
     }
 }
