@@ -9,13 +9,16 @@
 #define TASK_E2PROM_STACK_SIZE 256U
 #define TASK_ELOG_STACK_SIZE 256U
 #define TASK_MODBUS_STACK_SIZE 1024U
+#define TASK_SPI_RX_STACK_SIZE 256U
 
 #define TASK_CLOCK_PRIO 4U
 #define TASK_E2PROM_PRIO 4U
 #define TASK_ELOG_PRIO 3U
 #define TASK_MODBUS_PRIO 5U
+#define TASK_SPI_RX_PRIO 5U
 
 TaskHandle_t task_modbus_handler = NULL;
+Taskhandle_t task_spi_rx_handler = NULL;
 
 static int task_test(void)
 {
@@ -45,6 +48,30 @@ static int task_test(void)
     //     return -1;
     // }
 
+    // ret = xTaskCreate(task_modbus,
+    //                   "task_modbus",
+    //                   TASK_MODBUS_STACK_SIZE,
+    //                   NULL,
+    //                   TASK_MODBUS_PRIO,
+    //                   &task_modbus_handler);
+    // if (ret != pdPASS)
+    // {
+    //     log_e("create task_modbus failed");
+    //     return -1;
+    // }
+
+    ret = xTaskCreate(task_spi_rx,
+                      "taske_spi_rx",
+                      TASK_SPI_RX_STACK_SIZE,
+                      NULL,
+                      TASK_SPI_RX_PRIO,
+                      task_spi_rx_handler);
+    if (ret != pdPASS)
+    {
+        log_e("create task_spi_rx failed");
+        return -1;
+    }
+
     ret = xTaskCreate(task_elog,
                       "task_elog",
                       TASK_ELOG_STACK_SIZE,
@@ -54,18 +81,6 @@ static int task_test(void)
     if (ret != pdPASS)
     {
         log_e("create task_elog failed");
-        return -1;
-    }
-
-    ret = xTaskCreate(task_modbus,
-                      "task_modbus",
-                      TASK_MODBUS_STACK_SIZE,
-                      NULL,
-                      TASK_MODBUS_PRIO,
-                      &task_modbus_handler);
-    if (ret != pdPASS)
-    {
-        log_e("create task_modbus failed");
         return -1;
     }
 
