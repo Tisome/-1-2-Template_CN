@@ -13,7 +13,7 @@ typedef struct {
     volatile uint16_t frame_ready; // 有一帧待解析
 } circular_buf_t;
 
-void create_empty_circular_buffer(circular_buf_t *p_buffer);
+circular_buf_t *create_empty_circular_buffer(void);
 
 extern circular_buf_t *g_modbus_rx_cb;
 

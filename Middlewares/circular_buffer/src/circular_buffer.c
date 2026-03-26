@@ -6,9 +6,9 @@
 
 circular_buf_t *g_modbus_rx_cb = NULL;
 
-void create_empty_circular_buffer(circular_buf_t *p_buffer)
+circular_buf_t *create_empty_circular_buffer(void)
 {
-    p_buffer = (circular_buf_t *)malloc(sizeof(circular_buf_t));
+    circular_buf_t *p_buffer = (circular_buf_t *)malloc(sizeof(circular_buf_t));
     if (p_buffer != NULL)
     {
         memset(p_buffer, 0, sizeof(circular_buf_t));
@@ -17,7 +17,7 @@ void create_empty_circular_buffer(circular_buf_t *p_buffer)
     {
         log_e("Failed to allocate memory for circular buffer");
     }
-    return;
+    return p_buffer;
 }
 
 // uint8_t buffer_is_null(circular_buf_t *p_buffer)

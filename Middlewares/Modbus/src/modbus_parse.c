@@ -16,7 +16,7 @@
 
 extern circular_buf_t *g_modbus_rx_cb;
 
-static uint16_t modbus_frame_is_ready(circular_buf_t *p_buffer)
+uint16_t modbus_frame_is_ready(circular_buf_t *p_buffer)
 {
     if (p_buffer == NULL)
     {
@@ -26,7 +26,7 @@ static uint16_t modbus_frame_is_ready(circular_buf_t *p_buffer)
     return p_buffer->frame_ready;
 }
 
-static uint16_t modbus_get_frame(circular_buf_t *p_buffer, uint8_t *buf, uint16_t max_len)
+uint16_t modbus_get_frame(circular_buf_t *p_buffer, uint8_t *buf, uint16_t max_len)
 {
     uint16_t frame_start;
     uint16_t frame_end;
@@ -99,7 +99,7 @@ static uint16_t modbus_get_frame(circular_buf_t *p_buffer, uint8_t *buf, uint16_
 
 // 使用 memset 将 parser 结构体的所有成员初始化为 0
 // 同时设置状态为IDLE
-static void reset_modbus_parser(modbus_parser_t *parser)
+void reset_modbus_parser(modbus_parser_t *parser)
 {
     memset(parser, 0, sizeof(modbus_parser_t));
     parser->state = MODBUS_STATE_IDLE;

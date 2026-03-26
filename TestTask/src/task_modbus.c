@@ -67,21 +67,32 @@ static void modbus_test_link_layer_receive_callback(void)
 static void modbus_test_rx_frame(void)
 {
     log_i("modbus test: rx frame start");
+    modbus_parser_t parser;
+
+    uint16_t raw_len = 0U;
+    uint8_t buf[MODBUS_RX_BUF_SIZE];
 
     /* 这里测试 DMA + IDLE 分帧结果
      * 一般这里不手写协议解析，只打印收到的一整帧
-     * 你可以把队列里收到的数据 dump 出来
+     * 把队列里收到的数据 dump 出来
      */
+    while (1)
+    {
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-    /* 伪代码：
-     * if (xQueueReceive(queue_uart_frame, &frame, portMAX_DELAY) == pdPASS)
-     * {
-     *     log_i("rx len = %u", frame.len);
-     *     dump_hex(frame.buf, frame.len);
-     * }
-     */
+        log_i("receive a dma callback");
 
-    log_i("modbus test: rx frame done");
+        if (0U == modbus_frame_is_ready(g_modbus_rx_cb))
+        {
+            log_e("modbus frame is not ready");
+            continue;
+        }
+
+        reset_modbus_parser(&parser);
+
+        raw_len = modbus_get_frame(g_modbus_rx_cb, buf, MODBUS_RX_BUF_SIZE);
+        usart0_send_modbus_bytes(buf, raw_len);
+    }
 }
 #endif
 
@@ -265,6 +276,8 @@ void USART0_IRQHandler(void)
 #if MODBUS_TEST_RX_FRAME
 void USART0_IRQHandler(void)
 {
+    uint16_t dma_pos;
+
     volatile uint32_t temp;
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
@@ -274,6 +287,18 @@ void USART0_IRQHandler(void)
         temp = USART_STAT0(USART0);
         temp = USART_DATA(USART0);
         (void)temp;
+
+        // 获得dma当前写到的位置
+        dma_pos = usart0_dma_get_pos();
+
+        if (g_modbus_rx_cb == NULL)
+        {
+            log_e("g_modbus_rx_cb == NULL");
+            return;
+        }
+        g_modbus_rx_cb->frame_start = g_modbus_rx_cb->read_pos;
+        g_modbus_rx_cb->frame_end = dma_pos;
+        g_modbus_rx_cb->frame_ready = 1;
 
         if (task_modbus_handler != NULL)
         {
