@@ -64,11 +64,11 @@ typedef enum {
 } key_trigger_edge_t;
 
 typedef enum {
-    KEY_ID_NONE = 0,
-    KEY_ID_1    = 1,
-    KEY_ID_2    = 2,
-    KEY_ID_3    = 3,
-    KEY_ID_4    = 4
+    KEY_ID_1 = 0,
+    KEY_ID_2 = 1,
+    KEY_ID_3 = 2,
+    KEY_ID_4 = 3,
+    KEY_ID_NONE = 0xFF
 } key_id_t;
 
 typedef struct

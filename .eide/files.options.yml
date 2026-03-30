@@ -18,3 +18,9 @@ options:
     Target 1:
         files: {}
         virtualPathFiles: {}
+    CCT6:
+        files: {}
+        virtualPathFiles: {}
+    RCT6:
+        files: {}
+        virtualPathFiles: {}

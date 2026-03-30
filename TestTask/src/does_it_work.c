@@ -1,5 +1,6 @@
 #include "does_it_work.h"
 
+#include "bsp_key.h"
 #include "elog.h"
 
 #include "FreeRTOS.h"
@@ -10,12 +11,16 @@
 #define TASK_ELOG_STACK_SIZE 256U
 #define TASK_MODBUS_STACK_SIZE 1024U
 #define TASK_SPI_RX_STACK_SIZE 256U
+#define TASK_KEY_STACK_SIZE 512U
+#define TASK_KEY_TEST_STACK_SIZE 512U
 
 #define TASK_CLOCK_PRIO 4U
 #define TASK_E2PROM_PRIO 4U
 #define TASK_ELOG_PRIO 3U
 #define TASK_MODBUS_PRIO 5U
 #define TASK_SPI_RX_PRIO 5U
+#define TASK_KEY_PRIO 6U
+#define TASK_KEY_TEST_PRIO 4U
 
 TaskHandle_t task_spi_rx_handler = NULL;
 TaskHandle_t task_modbus_handler = NULL;
@@ -24,17 +29,17 @@ static int task_test(void)
 {
     BaseType_t ret;
 
-    // ret = xTaskCreate(task_clock,
-    //                   "task_clock",
-    //                   TASK_CLOCK_STACK_SIZE,
-    //                   NULL,
-    //                   TASK_CLOCK_PRIO,
-    //                   NULL);
-    // if (ret != pdPASS)
-    // {
-    //     log_e("create task_clock failed");
-    //     return -1;
-    // }
+    ret = xTaskCreate(task_clock,
+                      "task_clock",
+                      TASK_CLOCK_STACK_SIZE,
+                      NULL,
+                      TASK_CLOCK_PRIO,
+                      NULL);
+    if (ret != pdPASS)
+    {
+        log_e("create task_clock failed");
+        return -1;
+    }
 
     // ret = xTaskCreate(task_e2prom,
     //                   "task_e2prom",
@@ -60,17 +65,17 @@ static int task_test(void)
     //     return -1;
     // }
 
-    ret = xTaskCreate(task_spi_rx,
-                      "taske_spi_rx",
-                      TASK_SPI_RX_STACK_SIZE,
-                      NULL,
-                      TASK_SPI_RX_PRIO,
-                      &task_spi_rx_handler);
-    if (ret != pdPASS)
-    {
-        log_e("create task_spi_rx failed");
-        return -1;
-    }
+    // ret = xTaskCreate(task_spi_rx,
+    //                   "taske_spi_rx",
+    //                   TASK_SPI_RX_STACK_SIZE,
+    //                   NULL,
+    //                   TASK_SPI_RX_PRIO,
+    //                   &task_spi_rx_handler);
+    // if (ret != pdPASS)
+    // {
+    //     log_e("create task_spi_rx failed");
+    //     return -1;
+    // }
 
     ret = xTaskCreate(task_elog,
                       "task_elog",
@@ -81,6 +86,30 @@ static int task_test(void)
     if (ret != pdPASS)
     {
         log_e("create task_elog failed");
+        return -1;
+    }
+
+    ret = xTaskCreate(task_key,
+                      "task_key",
+                      TASK_KEY_STACK_SIZE,
+                      NULL,
+                      TASK_KEY_PRIO,
+                      &task_key_handle);
+    if (ret != pdPASS)
+    {
+        log_e("create task_key failed");
+        return -1;
+    }
+
+    ret = xTaskCreate(task_key_test,
+                      "task_key_test",
+                      TASK_KEY_TEST_STACK_SIZE,
+                      NULL,
+                      TASK_KEY_TEST_PRIO,
+                      NULL);
+    if (ret != pdPASS)
+    {
+        log_e("create task_key_test failed");
         return -1;
     }
 

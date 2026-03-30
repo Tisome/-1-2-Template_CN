@@ -17,8 +17,14 @@ extern "C" {
 uint16_t usart0_dma_get_pos(void);
 
 void usart0_dma_modbus_init(uint8_t *modbus_rx_dma_buf, uint16_t buf_size);
+/* USART input/output byte wrappers.
+ * CCT6: RS485 + USART
+ * RCT6: USART only
+ */
+uint8_t usart0_read_byte(void);
+void usart0_write_byte(uint8_t byte);
 
-/* RS485 / Modbus 发送 */
+/* RS485 / Modbus 发�?*/
 void usart0_send_modbus_bytes(const uint8_t *buf, uint32_t len);
 
 #ifdef __cplusplus

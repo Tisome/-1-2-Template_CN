@@ -182,3 +182,35 @@ spi_status_t spi_master_read_packet_timeout(uint32_t spi_periph,
 
     return SPI_STATUS_OK;
 }
+
+spi_status_t fpga_spi_read_packet(uint8_t *rx_buf,
+                                  uint16_t len,
+                                  uint32_t timeout_ms)
+{
+    spi_status_t ret;
+
+    if ((rx_buf == NULL) || (len == 0U))
+    {
+        return SPI_STATUS_ERROR_PARAMETER;
+    }
+
+    /* 清残留数据 */
+    while (spi_i2s_flag_get(FPGA_SPI, SPI_FLAG_RBNE) == SET)
+    {
+        (void)spi_i2s_data_receive(FPGA_SPI);
+    }
+
+    /* 片选拉低，开始一帧 */
+    gpio_bit_reset(FPGA_SPI_NSS_GPIO_PORT, FPGA_SPI_NSS_GPIO_PIN);
+
+    /* 给 FPGA 一点建立时间，测试阶段可先保留 */
+    for (volatile uint32_t i = 0; i < 50U; i++)
+        ;
+
+    ret = spi_master_read_packet_timeout(FPGA_SPI, rx_buf, len, timeout_ms);
+
+    /* 片选拉高，结束一帧 */
+    gpio_bit_set(FPGA_SPI_NSS_GPIO_PORT, FPGA_SPI_NSS_GPIO_PIN);
+
+    return ret;
+}

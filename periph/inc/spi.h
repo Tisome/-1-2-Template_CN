@@ -21,4 +21,7 @@ spi_status_t spi_master_read_packet_timeout(uint32_t spi_periph,
                                             uint16_t len,
                                             uint32_t timeout_ms);
 
+spi_status_t fpga_spi_read_packet(uint8_t *rx_buf,
+                                  uint16_t len,
+                                  uint32_t timeout_ms);
 #endif

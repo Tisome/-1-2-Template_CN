@@ -83,9 +83,11 @@ void gpio_config()
     gpio_init(USART0_GPIO_PORT, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, USART0_TX_GPIO_PIN);
     gpio_init(USART0_GPIO_PORT, GPIO_MODE_IN_FLOATING, GPIO_OSPEED_50MHZ, USART0_RX_GPIO_PIN);
 
-    /* configure RS485 Control GPIO port */
+#if CCT6
+    /* configure RS485 Control GPIO port (CCT6 only) */
     gpio_init(RS485_CONTROL_GPIO_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, RS485_CONTROL_PIN);
     gpio_bit_reset(RS485_CONTROL_GPIO_PORT, RS485_CONTROL_PIN);
+#endif
 }
 
 void fpga_spi_cs_high(void)

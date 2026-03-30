@@ -16,6 +16,7 @@ void task_elog(void *p);
 void task_e2prom(void *p);
 void task_modbus(void *p);
 void task_spi_rx(void *p);
+void task_key_test(void *p);
 
 TaskHandle_t get_spi_rx_task_handle(void);
 

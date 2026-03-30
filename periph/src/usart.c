@@ -1,7 +1,6 @@
-
-
 #include "usart.h"
 #include "gpio.h"
+
 #include <string.h>
 
 #include "circular_buffer.h"
@@ -24,12 +23,57 @@ uint16_t usart0_dma_get_pos(void)
     return pos;
 }
 
+uint8_t usart0_read_byte(void)
+{
+#if CCT6
+    return (uint8_t)usart_data_receive(USART0);
+#elif RCT6
+    return (uint8_t)usart_data_receive(USART0);
+#else
+    return (uint8_t)usart_data_receive(USART0);
+#endif
+}
+
+void usart0_write_byte(uint8_t byte)
+{
+#if CCT6
+    usart_data_transmit(USART0, byte);
+#elif RCT6
+    usart_data_transmit(USART0, byte);
+#else
+    usart_data_transmit(USART0, byte);
+#endif
+}
+
+static void usart0_tx_begin(void)
+{
+#if CCT6
+    /* RS485 board: DE = 1 (TX mode) */
+    gpio_bit_set(RS485_CONTROL_GPIO_PORT, RS485_CONTROL_PIN);
+#elif RCT6
+    /* USART board: no direction control */
+#else
+    /* default: no direction control */
+#endif
+}
+
+static void usart0_tx_end(void)
+{
+#if CCT6
+    /* RS485 board: DE = 0 (RX mode) */
+    gpio_bit_reset(RS485_CONTROL_GPIO_PORT, RS485_CONTROL_PIN);
+#elif RCT6
+    /* USART board: no direction control */
+#else
+    /* default: no direction control */
+#endif
+}
+
 /* ======================
- * USART0初始化 用DMA
+ * USART0 init with DMA
  * ====================== */
 void usart0_dma_modbus_init(uint8_t *modbus_rx_dma_buf, uint16_t buf_size)
 {
-
     dma_parameter_struct dma_init_struct;
 
     usart_deinit(USART0);
@@ -57,7 +101,7 @@ void usart0_dma_modbus_init(uint8_t *modbus_rx_dma_buf, uint16_t buf_size)
     dma_init_struct.priority = DMA_PRIORITY_ULTRA_HIGH;
     dma_init(DMA0, DMA_CH4, &dma_init_struct);
 
-    dma_circulation_enable(DMA0, DMA_CH4); // 循环写入
+    dma_circulation_enable(DMA0, DMA_CH4);
     dma_memory_to_memory_disable(DMA0, DMA_CH4);
 
     usart_dma_receive_config(USART0, USART_DENR_ENABLE);
@@ -67,7 +111,7 @@ void usart0_dma_modbus_init(uint8_t *modbus_rx_dma_buf, uint16_t buf_size)
 }
 
 /* =========================
- * RS485 / Modbus 发送
+ * Modbus bytes send
  * ========================= */
 void usart0_send_modbus_bytes(const uint8_t *buf, uint32_t len)
 {
@@ -78,22 +122,19 @@ void usart0_send_modbus_bytes(const uint8_t *buf, uint32_t len)
         return;
     }
 
-    /* 切到发送模式（DE=1，RE根据你的电路决定） */
-    gpio_bit_set(RS485_CONTROL_GPIO_PORT, RS485_CONTROL_PIN);
+    usart0_tx_begin();
 
     for (i = 0U; i < len; i++)
     {
         while (RESET == usart_flag_get(USART0, USART_FLAG_TBE))
         {
         }
-        usart_data_transmit(USART0, buf[i]);
+        usart0_write_byte(buf[i]);
     }
 
-    /* 等最后1位完全发完 */
     while (RESET == usart_flag_get(USART0, USART_FLAG_TC))
     {
     }
 
-    /* 切回接收模式 */
-    gpio_bit_reset(RS485_CONTROL_GPIO_PORT, RS485_CONTROL_PIN);
+    usart0_tx_end();
 }

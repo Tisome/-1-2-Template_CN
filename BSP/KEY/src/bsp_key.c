@@ -11,6 +11,7 @@ static key_trigger_edge_t irq_type[KEY_NUMS] = {
     KEY_FALLING_EDGE,
     KEY_FALLING_EDGE};
 
+TaskHandle_t task_key_handle = NULL;
 QueueHandle_t key_queue = NULL;
 QueueHandle_t key_inner_queue = NULL;
 
@@ -149,27 +150,27 @@ void task_key(void *parameter)
 // USE ISR FUNCTION
 void key_gpio_exti_handler(uint16_t GPIO_Pin)
 {
-    static key_press_event_t key_events[KEY_NUMS][2] = {KEY_ID_NONE, KEY_EDGE_NONE, 0};
+    static key_press_event_t key_events[KEY_NUMS][2];
     static uint32_t last_trigger_time[KEY_NUMS] = {0};
 
     const uint32_t debounce_interval = DEBOUNCE_TIME_MS;
     uint32_t current_tick = KEY_PRESS_GET_TIME_MS();
 
     key_press_event_t *p_key_press = NULL;
-    key_id_t key_id;
+    key_id_t key_id = KEY_ID_NONE;
 
     switch (GPIO_Pin)
     {
-    case GPIO_PIN_0:
+    case KEY1_GPIO_PIN:
         key_id = KEY_ID_1;
         break;
-    case GPIO_PIN_1:
+    case KEY2_GPIO_PIN:
         key_id = KEY_ID_2;
         break;
-    case GPIO_PIN_2:
+    case KEY3_GPIO_PIN:
         key_id = KEY_ID_3;
         break;
-    case GPIO_PIN_3:
+    case KEY4_GPIO_PIN:
         key_id = KEY_ID_4;
         break;
     default:

@@ -217,7 +217,11 @@ static void GPIO_EXTI_IRQHandler(uint32_t GPIO_PIN_x)
  * 按键 中断
  *------------------------------------------------------*/
 
-/* EXTI0(KEY1)  中断服务函数 */
+/* =========================
+ * KEY IRQ (CCT6)
+ * KEY1->EXTI0, KEY2->EXTI5_9, KEY3->EXTI1, KEY4->EXTI2
+ * ========================= */
+#if CCT6
 void EXTI0_IRQHandler(void)
 {
     if (exti_interrupt_flag_get(KEY1_EXTI) != RESET)
@@ -227,7 +231,6 @@ void EXTI0_IRQHandler(void)
     }
 }
 
-/* EXTI5_9(KEY2)  中断服务函数 */
 void EXTI5_9_IRQHandler(void)
 {
     if (exti_interrupt_flag_get(KEY2_EXTI) != RESET)
@@ -237,7 +240,6 @@ void EXTI5_9_IRQHandler(void)
     }
 }
 
-/* EXTI1(KEY3)  中断服务函数 */
 void EXTI1_IRQHandler(void)
 {
     if (exti_interrupt_flag_get(KEY3_EXTI) != RESET)
@@ -247,7 +249,6 @@ void EXTI1_IRQHandler(void)
     }
 }
 
-/* EXTI2(KEY4)  中断服务函数 */
 void EXTI2_IRQHandler(void)
 {
     if (exti_interrupt_flag_get(KEY4_EXTI) != RESET)
@@ -256,6 +257,48 @@ void EXTI2_IRQHandler(void)
         GPIO_EXTI_IRQHandler(KEY4_GPIO_PIN);
     }
 }
+
+/* =========================
+ * KEY IRQ (RCT6)
+ * KEY1->EXTI1, KEY2->EXTI2, KEY3->EXTI3, KEY4->EXTI4
+ * ========================= */
+#elif RCT6
+void EXTI1_IRQHandler(void)
+{
+    if (exti_interrupt_flag_get(KEY1_EXTI) != RESET)
+    {
+        exti_interrupt_flag_clear(KEY1_EXTI);
+        GPIO_EXTI_IRQHandler(KEY1_GPIO_PIN);
+    }
+}
+
+void EXTI2_IRQHandler(void)
+{
+    if (exti_interrupt_flag_get(KEY2_EXTI) != RESET)
+    {
+        exti_interrupt_flag_clear(KEY2_EXTI);
+        GPIO_EXTI_IRQHandler(KEY2_GPIO_PIN);
+    }
+}
+
+void EXTI3_IRQHandler(void)
+{
+    if (exti_interrupt_flag_get(KEY3_EXTI) != RESET)
+    {
+        exti_interrupt_flag_clear(KEY3_EXTI);
+        GPIO_EXTI_IRQHandler(KEY3_GPIO_PIN);
+    }
+}
+
+void EXTI4_IRQHandler(void)
+{
+    if (exti_interrupt_flag_get(KEY4_EXTI) != RESET)
+    {
+        exti_interrupt_flag_clear(KEY4_EXTI);
+        GPIO_EXTI_IRQHandler(KEY4_GPIO_PIN);
+    }
+}
+#endif
 
 /* EXTI10_15(FPGA_INT) 中断服务函数 */
 void EXTI10_15_IRQHandler(void)
@@ -282,7 +325,7 @@ void USART0_IRQHandler(void)
         uint16_t frame_start;
 
         /* 清IDLE标志 */
-        usart_data_receive(USART0);
+        usart0_read_byte();
 
         dma_pos = usart0_dma_get_pos();
         frame_start = g_modbus_rx_cb->read_pos;
