@@ -1,7 +1,9 @@
 #include "does_it_work.h"
 
 #include "bsp_key.h"
+#include "data.h"
 #include "elog.h"
+#include "freertos_resources.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -13,6 +15,8 @@
 #define TASK_SPI_RX_STACK_SIZE 256U
 #define TASK_KEY_STACK_SIZE 512U
 #define TASK_KEY_TEST_STACK_SIZE 512U
+#define TASK_FAKE_DATA_STACK_SIZE 512U
+#define TASK_ALGORITHM_STACK_SIZE 768U
 
 #define TASK_CLOCK_PRIO 4U
 #define TASK_E2PROM_PRIO 4U
@@ -21,6 +25,8 @@
 #define TASK_SPI_RX_PRIO 5U
 #define TASK_KEY_PRIO 6U
 #define TASK_KEY_TEST_PRIO 4U
+#define TASK_FAKE_DATA_PRIO 5U
+#define TASK_ALGORITHM_PRIO 6U
 
 TaskHandle_t task_spi_rx_handler = NULL;
 TaskHandle_t task_modbus_handler = NULL;
@@ -29,17 +35,17 @@ static int task_test(void)
 {
     BaseType_t ret;
 
-    ret = xTaskCreate(task_clock,
-                      "task_clock",
-                      TASK_CLOCK_STACK_SIZE,
-                      NULL,
-                      TASK_CLOCK_PRIO,
-                      NULL);
-    if (ret != pdPASS)
-    {
-        log_e("create task_clock failed");
-        return -1;
-    }
+    // ret = xTaskCreate(task_clock,
+    //                   "task_clock",
+    //                   TASK_CLOCK_STACK_SIZE,
+    //                   NULL,
+    //                   TASK_CLOCK_PRIO,
+    //                   NULL);
+    // if (ret != pdPASS)
+    // {
+    //     log_e("create task_clock failed");
+    //     return -1;
+    // }
 
     // ret = xTaskCreate(task_e2prom,
     //                   "task_e2prom",
@@ -89,27 +95,51 @@ static int task_test(void)
         return -1;
     }
 
-    ret = xTaskCreate(task_key,
-                      "task_key",
-                      TASK_KEY_STACK_SIZE,
-                      NULL,
-                      TASK_KEY_PRIO,
-                      &task_key_handle);
-    if (ret != pdPASS)
-    {
-        log_e("create task_key failed");
-        return -1;
-    }
+    // ret = xTaskCreate(task_key,
+    //                   "task_key",
+    //                   TASK_KEY_STACK_SIZE,
+    //                   NULL,
+    //                   TASK_KEY_PRIO,
+    //                   &task_key_handle);
+    // if (ret != pdPASS)
+    // {
+    //     log_e("create task_key failed");
+    //     return -1;
+    // }
 
-    ret = xTaskCreate(task_key_test,
-                      "task_key_test",
-                      TASK_KEY_TEST_STACK_SIZE,
+    // ret = xTaskCreate(task_key_test,
+    //                   "task_key_test",
+    //                   TASK_KEY_TEST_STACK_SIZE,
+    //                   NULL,
+    //                   TASK_KEY_TEST_PRIO,
+    //                   NULL);
+    // if (ret != pdPASS)
+    // {
+    //     log_e("create task_key_test failed");
+    //     return -1;
+    // }
+
+    ret = xTaskCreate(task_fake_data,
+                      "task_fake_data",
+                      TASK_FAKE_DATA_STACK_SIZE,
                       NULL,
-                      TASK_KEY_TEST_PRIO,
+                      TASK_FAKE_DATA_PRIO,
                       NULL);
     if (ret != pdPASS)
     {
-        log_e("create task_key_test failed");
+        log_e("create task_fake_data failed");
+        return -1;
+    }
+
+    ret = xTaskCreate(task_algorithm,
+                      "task_algorithm",
+                      TASK_ALGORITHM_STACK_SIZE,
+                      NULL,
+                      TASK_ALGORITHM_PRIO,
+                      NULL);
+    if (ret != pdPASS)
+    {
+        log_e("create task_algorithm failed");
         return -1;
     }
 
@@ -133,5 +163,7 @@ TaskHandle_t get_modbus_task_handle(void)
 
 void does_it_work(void)
 {
+    freertos_resources_init();
+    parameter_init();
     (void)task_test();
 }

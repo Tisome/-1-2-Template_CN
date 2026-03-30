@@ -17,23 +17,26 @@ bool algorithm_process_group(Pipe_Parameters_t *para,
                              double t2_ns,
                              double dt_ns)
 {
+    double sq = 0.0;
     bool is_bad = (t1_ns > T1_T2_LIMIT_NS) ||
                   (t2_ns > T1_T2_LIMIT_NS) ||
                   (dt_ns > DT_UP_LIMIT_NS) ||
                   (dt_ns < DT_LOW_LIMIT_NS);
 
-    if (is_bad)
-    {
-        log_v("this data is bad.");
-    }
-
     sq_window_update(state, is_bad);
 
     log_v("sq_window_update");
 
-    double sq = sq_get_percent(state);
+    sq = sq_get_percent(state);
+    state->last_sq_value = sq;
 
     log_v("present SQ is %.3f", sq);
+
+    if (is_bad)
+    {
+        log_v("this data is bad.");
+        return false;
+    }
 
     double flow_v_mps_raw = vel_calc_from_dt(para, t1_ns, t2_ns, dt_ns);
 
@@ -57,19 +60,12 @@ bool algorithm_process_group(Pipe_Parameters_t *para,
     log_v("after zero drift flow speed is %.3f m/s", flow_v_comp);
 
     state->last_flow_speed_mps = flow_v_comp;
-    state->last_sq_value = sq;
 
     double flow_v_final = flow_limit(para, flow_v_comp);
 
     log_v("final flow speed is %.3f m/s", flow_v_final);
 
     update_flow_outputs(para, state, out, sq, flow_v_final);
-
-    log_i("v = %.1f, q = %.1f, q_all = %.1f, sq = %.1f",
-          out->flow_speed,
-          out->flow_rate_instant,
-          out->flow_rate_total,
-          out->sq_value);
 
     flow_alarm(para, flow_v_final);
 

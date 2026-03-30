@@ -41,8 +41,8 @@ Pipe_algo_out_data_t g_algo_out =
         .flow_rate_total = 0.0,
         .sq_value = 0.0,
         .flow_speed_unit = SPEED_UNIT_M_P_S,
-        .flow_rate_unit = RATE_UNIT_M3_P_S,
-        .flow_total_unit = VOLUME_UNIT_M3};
+        .flow_rate_unit = RATE_UNIT_L_P_MIN,
+        .flow_total_unit = VOLUME_UNIT_L};
 
 ALARM_TYPE g_alarm = ALARM_OK;
 
@@ -80,7 +80,7 @@ static Pipe_Parameters_t make_default_pipe_parameters(void)
 
             .pipe_type = PIPE_PVC,
             .speed_unit_type = SPEED_UNIT_M_P_S,
-            .rate_unit_type = RATE_UNIT_M3_P_S};
+            .rate_unit_type = RATE_UNIT_L_P_MIN};
 
     return default_pipe_parameters;
 }
@@ -222,6 +222,7 @@ void parameter_init(void)
         g_parameters = default_pipe_parameters;
         g_parameters.is_saved = 1U;
         (void)SaveParameters(&g_parameters);
+        log_i("parameter init: load eeprom failed, use default and save");
         return;
     }
 
@@ -230,11 +231,16 @@ void parameter_init(void)
         g_parameters = default_pipe_parameters;
         g_parameters.is_saved = 1U;
         (void)SaveParameters(&g_parameters);
+        log_i("parameter init: eeprom empty, use default and save");
+    }
+    else
+    {
+        log_i("parameter init: load from eeprom");
     }
 #else
     g_parameters = default_pipe_parameters;
+    log_i("parameter init: use default, eeprom disabled on this board");
 #endif
-    log_v("parameter loaded");
 }
 
 void parameter_reset_to_default(void)
@@ -251,10 +257,15 @@ e2prom_status_t SaveParameters(Pipe_Parameters_t *para)
         return E2PROM_ERROR;
     }
 
+#if USE_E2PROM
     /* Parameter storage currently uses the simple sync EEPROM API. */
     return eeprom_write_sync(E2PROM_PIPE_PARA_START_ADDR,
                              (const uint8_t *)para,
                              sizeof(Pipe_Parameters_t));
+#else
+    (void)para;
+    return E2PROM_ERROR_RESOURCE;
+#endif
 }
 
 e2prom_status_t LoadParameters(Pipe_Parameters_t *para)
@@ -264,7 +275,12 @@ e2prom_status_t LoadParameters(Pipe_Parameters_t *para)
         return E2PROM_ERROR;
     }
 
+#if USE_E2PROM
     return eeprom_read_sync(E2PROM_PIPE_PARA_START_ADDR,
                             (uint8_t *)para,
                             sizeof(Pipe_Parameters_t));
+#else
+    (void)para;
+    return E2PROM_ERROR_RESOURCE;
+#endif
 }
