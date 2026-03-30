@@ -23,6 +23,7 @@ void usart0_dma_modbus_init(uint8_t *modbus_rx_dma_buf, uint16_t buf_size);
  */
 uint8_t usart0_read_byte(void);
 void usart0_write_byte(uint8_t byte);
+void usart_send_text_line(const char *text);
 
 /* RS485 / Modbus å‘é€?*/
 void usart0_send_modbus_bytes(const uint8_t *buf, uint32_t len);

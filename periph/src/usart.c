@@ -138,3 +138,16 @@ void usart0_send_modbus_bytes(const uint8_t *buf, uint32_t len)
 
     usart0_tx_end();
 }
+
+void usart_send_text_line(const char *text)
+{
+    static const uint8_t line_end[] = {'\r', '\n'};
+
+    if (text == NULL)
+    {
+        return;
+    }
+
+    usart0_send_modbus_bytes((const uint8_t *)text, (uint32_t)strlen(text));
+    usart0_send_modbus_bytes(line_end, (uint32_t)sizeof(line_end));
+}
