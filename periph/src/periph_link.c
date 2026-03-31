@@ -2,6 +2,9 @@
 #include "circular_buffer.h"
 #include "usart.h"
 
+#include "lcd.h"
+#include "lcd_init.h"
+
 #include "elog.h"
 
 extern circular_buf_t *g_modbus_rx_cb;
@@ -15,6 +18,10 @@ void hardware_periph_init(void)
     rcu_config();
 
     gpio_config();
+
+    LCD_GPIO_Init();
+    LCD_Init();
+    Draw_Circle(100U, 100U, 10U, BLUE);
 
     g_modbus_rx_cb = modbus_buf_init();
 

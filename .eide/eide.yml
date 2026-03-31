@@ -268,10 +268,12 @@ targets:
         - App/inc
         - BSP/KEY/inc
         - BSP/at24cxx/inc
+        - BSP/LCD
       libList: []
     excludeList:
       - Task/src
       - Task/inc
+      - Middlewares/LVGL
     settings:
       debugger: cortex-debug
     toolchain: AC5

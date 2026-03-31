@@ -49,7 +49,6 @@ static double pipe_area_m2(const Pipe_Parameters_t *para)
     return M_PI * r_m * r_m;
 }
 
-
 /* L/min -> m^3/s */
 static double lpm_to_m3ps(double q_lpm)
 {
