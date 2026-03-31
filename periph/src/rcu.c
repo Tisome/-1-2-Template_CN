@@ -16,12 +16,14 @@ void rcu_config(void)
     rcu_periph_clock_enable(RCU_GPIO_FPGA_SPI_MISO_PORT);
     rcu_periph_clock_enable(RCU_GPIO_FPGA_SPI_MOSI_PORT);
 
+#if CCT6
     rcu_periph_clock_enable(RCU_GPIO_TFT_DC_PORT);
     rcu_periph_clock_enable(RCU_GPIO_TFT_CS_PORT);
     rcu_periph_clock_enable(RCU_GPIO_TFT_RESET_PORT);
     rcu_periph_clock_enable(RCU_GPIO_TFT_SCK_PORT);
     rcu_periph_clock_enable(RCU_GPIO_TFT_SDA_PORT);
     rcu_periph_clock_enable(RCU_GPIO_TFT_BL_PORT);
+#endif
 
     rcu_periph_clock_enable(RCU_GPIO_KEY1_PORT);
     rcu_periph_clock_enable(RCU_GPIO_KEY2_PORT);

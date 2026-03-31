@@ -119,29 +119,29 @@ static int task_test(void)
     //     return -1;
     // }
 
-    ret = xTaskCreate(task_fake_data,
-                      "task_fake_data",
-                      TASK_FAKE_DATA_STACK_SIZE,
-                      NULL,
-                      TASK_FAKE_DATA_PRIO,
-                      NULL);
-    if (ret != pdPASS)
-    {
-        log_e("create task_fake_data failed");
-        return -1;
-    }
+    // ret = xTaskCreate(task_fake_data,
+    //                   "task_fake_data",
+    //                   TASK_FAKE_DATA_STACK_SIZE,
+    //                   NULL,
+    //                   TASK_FAKE_DATA_PRIO,
+    //                   NULL);
+    // if (ret != pdPASS)
+    // {
+    //     log_e("create task_fake_data failed");
+    //     return -1;
+    // }
 
-    ret = xTaskCreate(task_algorithm,
-                      "task_algorithm",
-                      TASK_ALGORITHM_STACK_SIZE,
-                      NULL,
-                      TASK_ALGORITHM_PRIO,
-                      NULL);
-    if (ret != pdPASS)
-    {
-        log_e("create task_algorithm failed");
-        return -1;
-    }
+    // ret = xTaskCreate(task_algorithm,
+    //                   "task_algorithm",
+    //                   TASK_ALGORITHM_STACK_SIZE,
+    //                   NULL,
+    //                   TASK_ALGORITHM_PRIO,
+    //                   NULL);
+    // if (ret != pdPASS)
+    // {
+    //     log_e("create task_algorithm failed");
+    //     return -1;
+    // }
 
     vTaskStartScheduler();
 

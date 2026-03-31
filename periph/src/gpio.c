@@ -34,6 +34,7 @@ void gpio_config()
     FPGA_SPI_CS_DISABLE();
     /* configure FPGA SPI GPIO */
 
+#if CCT6
     /* configure TFT LCD GPIO */
     gpio_init(TFT_DC_GPIO_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, TFT_DC_GPIO_PIN);
     gpio_init(TFT_RESET_GPIO_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, TFT_RESET_GPIO_PIN);
@@ -42,7 +43,8 @@ void gpio_config()
     gpio_init(TFT_SCK_GPIO_PORT, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, TFT_SCK_GPIO_PIN);
     gpio_init(TFT_SDA_GPIO_PORT, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, TFT_SDA_GPIO_PIN);
     gpio_init(TFT_CS_GPIO_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, TFT_CS_GPIO_PIN);
-    /* configure TFT LCD GPIO */
+/* configure TFT LCD GPIO */
+#endif
 
     /* configure KEY GPIO port */
     gpio_init(KEY1_GPIO_PORT, GPIO_MODE_IPU, GPIO_OSPEED_50MHZ, KEY1_GPIO_PIN);

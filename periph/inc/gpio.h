@@ -36,6 +36,7 @@
         gpio_bit_reset(FPGA_SPI_NSS_GPIO_PORT, FPGA_SPI_NSS_GPIO_PIN); \
     } while (0);
 
+#if CCT6
 // TFT LCD GPIO
 #define TFT_DC_GPIO_PORT    GPIOB
 #define TFT_DC_GPIO_PIN     GPIO_PIN_4
@@ -54,6 +55,7 @@
 
 #define TFT_BL_GPIO_PORT    GPIOB
 #define TFT_BL_GPIO_PIN     GPIO_PIN_9
+#endif
 
 // KEY GPIO
 #if CCT6

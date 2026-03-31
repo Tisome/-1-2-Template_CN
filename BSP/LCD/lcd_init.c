@@ -2,10 +2,9 @@
 
 #include "user_type.h"
 
+#include "delay.h"
 #include "lcd_init.h"
 
-#include "FreeRTOS.h"
-#include "task.h"
 
 void LCD_GPIO_Init(void)
 {
@@ -155,16 +154,16 @@ void LCD_Init(void)
     LCD_GPIO_Init(); // 初始化GPIO
 
     LCD_RES_Clr(); // 复位
-    vTaskDelay(pdMS_TO_TICKS(100));
+    delay_ms(100U);
     LCD_RES_Set();
-    vTaskDelay(pdMS_TO_TICKS(100));
+    delay_ms(100U);
 
     LCD_BLK_Set(); // 打开背光
-    vTaskDelay(pdMS_TO_TICKS(100));
+    delay_ms(100U);
 
     //************* Start Initial Sequence **********//
     LCD_WR_REG(0x11); // Sleep out
-    vTaskDelay(pdMS_TO_TICKS(120));   // Delay 120ms
+    delay_ms(120U);   // Delay 120ms
     //************* Start Initial Sequence **********//
     LCD_WR_REG(0x36);
     if (USE_HORIZONTAL == 0)
