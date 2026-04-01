@@ -273,6 +273,7 @@ targets:
         - Middlewares/LVGL/GUI/lvgl/src
         - Middlewares/LVGL/GUI/lvgl/examples/porting
         - Middlewares/LVGL/GUI_APP
+        - Middlewares/Menus/inc
       libList: []
     excludeList:
       - Task/src

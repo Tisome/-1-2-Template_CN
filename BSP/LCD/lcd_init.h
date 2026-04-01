@@ -7,7 +7,7 @@
 #include "gd32f30x.h"
 #include "user_type.h"
 
-#define USE_HORIZONTAL 1
+#define USE_HORIZONTAL 0
 
 #define LCD_W 240
 #define LCD_H 240

@@ -22,7 +22,7 @@
 
 #define TASK_CLOCK_PRIO 4U
 #define TASK_E2PROM_PRIO 4U
-#define TASK_ELOG_PRIO 3U
+#define TASK_ELOG_PRIO 6U
 #define TASK_MODBUS_PRIO 5U
 #define TASK_SPI_RX_PRIO 5U
 #define TASK_KEY_PRIO 6U
@@ -110,17 +110,17 @@ static int task_test(void)
         return -1;
     }
 
-    // ret = xTaskCreate(task_key,
-    //                   "task_key",
-    //                   TASK_KEY_STACK_SIZE,
-    //                   NULL,
-    //                   TASK_KEY_PRIO,
-    //                   &task_key_handle);
-    // if (ret != pdPASS)
-    // {
-    //     log_e("create task_key failed");
-    //     return -1;
-    // }
+    ret = xTaskCreate(task_key,
+                      "task_key",
+                      TASK_KEY_STACK_SIZE,
+                      NULL,
+                      TASK_KEY_PRIO,
+                      &task_key_handle);
+    if (ret != pdPASS)
+    {
+        log_e("create task_key failed");
+        return -1;
+    }
 
     // ret = xTaskCreate(task_key_test,
     //                   "task_key_test",
