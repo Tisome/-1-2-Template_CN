@@ -4,6 +4,7 @@
 #include "data.h"
 #include "elog.h"
 #include "freertos_resources.h"
+#include "Middlewares/LVGL/GUI_APP/lvgl_app_test.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -17,6 +18,7 @@
 #define TASK_KEY_TEST_STACK_SIZE 512U
 #define TASK_FAKE_DATA_STACK_SIZE 512U
 #define TASK_ALGORITHM_STACK_SIZE 768U
+#define TASK_LVGL_TEST_STACK_SIZE 1024U
 
 #define TASK_CLOCK_PRIO 4U
 #define TASK_E2PROM_PRIO 4U
@@ -27,6 +29,7 @@
 #define TASK_KEY_TEST_PRIO 4U
 #define TASK_FAKE_DATA_PRIO 5U
 #define TASK_ALGORITHM_PRIO 6U
+#define TASK_LVGL_TEST_PRIO 4U
 
 TaskHandle_t task_spi_rx_handler = NULL;
 TaskHandle_t task_modbus_handler = NULL;
@@ -92,6 +95,18 @@ static int task_test(void)
     if (ret != pdPASS)
     {
         log_e("create task_elog failed");
+        return -1;
+    }
+
+    ret = xTaskCreate(task_lvgl_test,
+                      "task_lvgl_test",
+                      TASK_LVGL_TEST_STACK_SIZE,
+                      NULL,
+                      TASK_LVGL_TEST_PRIO,
+                      NULL);
+    if (ret != pdPASS)
+    {
+        log_e("create task_lvgl_test failed");
         return -1;
     }
 

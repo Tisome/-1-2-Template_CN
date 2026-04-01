@@ -19,6 +19,7 @@ void task_spi_rx(void *p);
 void task_key_test(void *p);
 void task_fake_data(void *p);
 void task_algorithm(void *p);
+void task_lvgl_test(void *p);
 
 TaskHandle_t get_spi_rx_task_handle(void);
 

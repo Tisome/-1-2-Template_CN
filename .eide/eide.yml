@@ -272,6 +272,7 @@ targets:
         - Middlewares/LVGL/GUI/lvgl
         - Middlewares/LVGL/GUI/lvgl/src
         - Middlewares/LVGL/GUI/lvgl/examples/porting
+        - Middlewares/LVGL/GUI_APP
       libList: []
     excludeList:
       - Task/src
@@ -279,6 +280,10 @@ targets:
       - Middlewares/LVGL/GUI_APP/basic_UI
       - Middlewares/LVGL/GUI/lvgl/src/extra/libs
       - Middlewares/LVGL/GUI/lvgl/src/extra/others
+      - Middlewares/LVGL/GUI/lvgl/src/draw/nxp_pxp
+      - Middlewares/LVGL/GUI/lvgl/src/draw/nxp_vglite
+      - Middlewares/LVGL/GUI/lvgl/src/draw/sdl
+      - Middlewares/LVGL/GUI/lvgl/src/draw/stm32_dma2d
     settings:
       debugger: cortex-debug
     toolchain: AC5
