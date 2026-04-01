@@ -5,17 +5,11 @@
 
 void LCD_Fill(u16 xsta, u16 ysta, u16 xend, u16 yend, u16 color)
 {
-    u16 i;
-    u16 j;
+    uint32_t pixel_count;
 
     LCD_Address_Set(xsta, ysta, xend - 1U, yend - 1U);
-    for (i = ysta; i < yend; i++)
-    {
-        for (j = xsta; j < xend; j++)
-        {
-            LCD_WR_DATA(color);
-        }
-    }
+    pixel_count = (uint32_t)(xend - xsta) * (uint32_t)(yend - ysta);
+    LCD_WriteColorRepeated_Blocking(color, pixel_count);
 }
 
 void LCD_DrawPoint(u16 x, u16 y, u16 color)

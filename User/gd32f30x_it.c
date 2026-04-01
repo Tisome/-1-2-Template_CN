@@ -54,6 +54,7 @@ OF SUCH DAMAGE.
 #include "bsp_key.h"
 
 #include "gpio.h"
+#include "lcd_init.h"
 #include "timer.h"
 #include "usart.h"
 
@@ -308,6 +309,11 @@ void EXTI10_15_IRQHandler(void)
         exti_interrupt_flag_clear(FPGA_INT_EXTI);
         GPIO_EXTI_IRQHandler(FPGA_INT_GPIO_PIN);
     }
+}
+
+void DMA1_Channel1_IRQHandler(void)
+{
+    LCD_SPI2_DMA_IRQHandler();
 }
 
 /* =========================

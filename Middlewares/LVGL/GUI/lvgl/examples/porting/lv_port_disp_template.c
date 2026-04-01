@@ -16,6 +16,7 @@
 static void disp_init(void);
 static void disp_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_t *color_p);
 static void disp_write_colors(const lv_color_t *color_p, uint32_t pixel_count);
+static void disp_flush_complete(void *user_data);
 
 void lv_port_disp_init(void)
 {
@@ -44,11 +45,16 @@ static void disp_init(void)
 
 static void disp_write_colors(const lv_color_t *color_p, uint32_t pixel_count)
 {
-    while (pixel_count > 0U)
+    LCD_WriteColors_Blocking((const u16 *)color_p, pixel_count);
+}
+
+static void disp_flush_complete(void *user_data)
+{
+    lv_disp_drv_t *disp_drv = (lv_disp_drv_t *)user_data;
+
+    if (disp_drv != NULL)
     {
-        LCD_WR_DATA((u16)color_p->full);
-        color_p++;
-        pixel_count--;
+        lv_disp_flush_ready(disp_drv);
     }
 }
 
@@ -87,6 +93,12 @@ static void disp_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_
     if ((x1 == area->x1) && (y1 == area->y1) && (x2 == area->x2) && (y2 == area->y2))
     {
         uint32_t pixel_count = (uint32_t)(x2 - x1 + 1) * (uint32_t)(y2 - y1 + 1);
+
+        if (LCD_WriteColors_DMA((const u16 *)color_p, pixel_count, disp_flush_complete, disp_drv))
+        {
+            return;
+        }
+
         disp_write_colors(color_p, pixel_count);
     }
     else
