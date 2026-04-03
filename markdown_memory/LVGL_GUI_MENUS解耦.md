@@ -1,0 +1,2 @@
+- 请你将lvgl_app_test.c中的代码各个界面可以的话进行解耦，写到/Middleware/LVGL/GUI_APP，我的参考代码是/others_code/Menus的代码，这样的话方便把各个界面的代码分到各个文件中来写
+- 我想请你看看怎么写，原本的/Middleware/LVGL/GUI_APP中可以根据需求创建、修改、删除文件，以求把各个页面写到各个文件中

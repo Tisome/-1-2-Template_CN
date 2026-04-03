@@ -83,6 +83,25 @@ virtualFolder:
         - path: Middlewares/LVGL/GUI_APP/font/my_num_abc_font_size_16_regular.c
         - path: Middlewares/LVGL/GUI_APP/font/my_num_font_size_28_regular.c
       folders: []
+    - name: GUI_APP_Code
+      files:
+        - path: Middlewares/LVGL/GUI_APP/code/inc/lvgl_app_test.h
+        - path: Middlewares/LVGL/GUI_APP/code/inc/menu_app.h
+        - path: Middlewares/LVGL/GUI_APP/code/inc/menu_data.h
+        - path: Middlewares/LVGL/GUI_APP/code/inc/menu_list_page.h
+        - path: Middlewares/LVGL/GUI_APP/code/inc/menu_measure_page.h
+        - path: Middlewares/LVGL/GUI_APP/code/inc/menu_nav.h
+        - path: Middlewares/LVGL/GUI_APP/code/inc/menu_setting_page.h
+        - path: Middlewares/LVGL/GUI_APP/code/inc/menu_strings.h
+        - path: Middlewares/LVGL/GUI_APP/code/inc/menu_style.h
+        - path: Middlewares/LVGL/GUI_APP/code/src/lvgl_app_test.c
+        - path: Middlewares/LVGL/GUI_APP/code/src/menu_app.c
+        - path: Middlewares/LVGL/GUI_APP/code/src/menu_data.c
+        - path: Middlewares/LVGL/GUI_APP/code/src/menu_list_page.c
+        - path: Middlewares/LVGL/GUI_APP/code/src/menu_measure_page.c
+        - path: Middlewares/LVGL/GUI_APP/code/src/menu_nav.c
+        - path: Middlewares/LVGL/GUI_APP/code/src/menu_setting_page.c
+      folders: []
 dependenceList: []
 outDir: build
 miscInfo:
@@ -280,7 +299,6 @@ targets:
         - Middlewares/LVGL/GUI/lvgl/src
         - Middlewares/LVGL/GUI/lvgl/examples/porting
         - Middlewares/LVGL/GUI_APP/code/inc
-        - Middlewares/Menus/inc
         - Middlewares/LVGL/GUI_APP/code/src
         - Middlewares/LVGL/GUI_APP/font
       libList: []
