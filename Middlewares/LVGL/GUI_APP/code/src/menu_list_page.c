@@ -37,11 +37,14 @@ void menu_list_page_create(menu_list_page_t *page, lv_obj_t *parent)
     lv_obj_set_style_text_font(page->title_label, menu_font_cn(), 0);
     lv_obj_set_style_text_color(page->title_label, lv_color_white(), 0);
     lv_obj_align(page->title_label, LV_ALIGN_TOP_LEFT, 14, 8);
+    lv_label_set_text_static(page->title_label, "");
 
     page->page_label = lv_label_create(page->root);
     lv_obj_set_style_text_font(page->page_label, menu_font_latin_12(), 0);
     lv_obj_set_style_text_color(page->page_label, lv_color_white(), 0);
     lv_obj_align(page->page_label, LV_ALIGN_TOP_RIGHT, -12, 8);
+    page->page_text[0] = '\0';
+    lv_label_set_text_static(page->page_label, page->page_text);
 
     for (row_index = 0U; row_index < MENU_VISIBLE_ITEMS; row_index++)
     {
@@ -66,6 +69,7 @@ void menu_list_page_create(menu_list_page_t *page, lv_obj_t *parent)
         lv_obj_set_style_text_color(page->item_labels[row_index], lv_color_hex(MENU_COLOR_TEXT), 0);
         lv_obj_set_style_text_align(page->item_labels[row_index], LV_TEXT_ALIGN_CENTER, 0);
         lv_obj_center(page->item_labels[row_index]);
+        lv_label_set_text_static(page->item_labels[row_index], "");
     }
 }
 
@@ -109,8 +113,8 @@ void menu_list_page_render(menu_list_page_t *page, const menu_nav_state_t *nav_s
     }
 
     (void)snprintf(page->page_text, sizeof(page->page_text), "<%u/%u>", current_page_index, total_pages);
-    lv_label_set_text(page->title_label, current_page->title);
-    lv_label_set_text(page->page_label, page->page_text);
+    lv_label_set_text_static(page->title_label, current_page->title);
+    lv_label_set_text_static(page->page_label, page->page_text);
 
     visible_count = menu_nav_get_visible_items(nav_state, items, MENU_VISIBLE_ITEMS, &first_index);
 
@@ -121,13 +125,13 @@ void menu_list_page_render(menu_list_page_t *page, const menu_nav_state_t *nav_s
             bool selected = (menu_nav_get_selected_index(nav_state) == (uint16_t)(first_index + row_index));
 
             menu_set_page_hidden(page->item_panels[row_index], false);
-            lv_label_set_text(page->item_labels[row_index], items[row_index]->label);
+            lv_label_set_text_static(page->item_labels[row_index], items[row_index]->label);
             menu_list_page_apply_style(page, row_index, selected);
         }
         else
         {
             menu_set_page_hidden(page->item_panels[row_index], true);
-            lv_label_set_text(page->item_labels[row_index], "");
+            lv_label_set_text_static(page->item_labels[row_index], "");
         }
     }
 }

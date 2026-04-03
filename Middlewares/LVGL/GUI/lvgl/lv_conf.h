@@ -56,7 +56,7 @@
 #define LV_MEM_CUSTOM                       0
 #if LV_MEM_CUSTOM == 0
     /* `lv_mem_alloc()`可获得的内存大小(以字节为单位)(>= 2kB) */
-    #define LV_MEM_SIZE                     (12U * 1024U)          /*[字节]*/
+    #define LV_MEM_SIZE                     (16U * 1024U)          /*[字节]*/
     /* 为内存池设置一个地址，而不是将其作为普通数组分配。也可以在外部SRAM中。 */
     #define LV_MEM_ADR                      0     /*0: 未使用*/
     /* 给内存分配器而不是地址，它将被调用来获得LVGL的内存池。例如my_malloc */

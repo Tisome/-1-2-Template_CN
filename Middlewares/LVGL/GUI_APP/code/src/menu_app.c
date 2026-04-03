@@ -6,7 +6,9 @@
 #include "menu_data.h"
 #include "menu_list_page.h"
 #include "menu_measure_page.h"
+#include "menu_setting_backend.h"
 #include "menu_setting_page.h"
+#include "menu_setting_session.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -35,6 +37,7 @@ typedef struct
     menu_screen_t current_screen;
     menu_nav_state_t nav_state;
     const menu_setting_desc_t *active_setting;
+    menu_setting_session_t setting_session;
     menu_measure_page_t measure_page;
     menu_list_page_t list_page;
     menu_setting_page_t setting_page;
@@ -48,19 +51,19 @@ static menu_key_t menu_app_map_key(uint8_t raw_key)
     {
     case KEY1_PRESS:
     case KEY1_LONG_PRESS:
-        return MENU_KEY_BACK;
+        return MENU_KEY_OK;
 
     case KEY2_PRESS:
     case KEY2_LONG_PRESS:
-        return MENU_KEY_DOWN;
+        return MENU_KEY_UP;
 
     case KEY3_PRESS:
     case KEY3_LONG_PRESS:
-        return MENU_KEY_UP;
+        return MENU_KEY_DOWN;
 
     case KEY4_PRESS:
     case KEY4_LONG_PRESS:
-        return MENU_KEY_OK;
+        return MENU_KEY_BACK;
 
     default:
         return MENU_KEY_NONE;
@@ -159,7 +162,22 @@ static void menu_app_render_list(menu_app_ctx_t *app)
 
 static void menu_app_render_setting(menu_app_ctx_t *app)
 {
-    menu_setting_page_render(&app->setting_page, app->active_setting);
+    menu_setting_view_t view;
+
+    if (app == NULL)
+    {
+        return;
+    }
+
+    if ((app->active_setting != NULL) &&
+        menu_setting_session_build_view(&app->setting_session, &view))
+    {
+        menu_setting_page_render(&app->setting_page, app->active_setting, &view);
+    }
+    else
+    {
+        menu_setting_page_render(&app->setting_page, app->active_setting, NULL);
+    }
 }
 
 static void menu_app_show_measure(menu_app_ctx_t *app)
@@ -202,6 +220,7 @@ static void menu_app_back_to_measure(menu_app_ctx_t *app)
 static void menu_app_open_setting(menu_app_ctx_t *app, const menu_setting_desc_t *setting)
 {
     app->active_setting = setting;
+    (void)menu_setting_session_begin(&app->setting_session, setting);
     menu_app_show_setting(app);
     menu_app_render_setting(app);
 }
@@ -221,6 +240,7 @@ static void menu_app_back_to_parent(menu_app_ctx_t *app)
 static void menu_app_back_from_setting(menu_app_ctx_t *app)
 {
     menu_nav_reset_current_selection(&app->nav_state);
+    menu_setting_session_reset(&app->setting_session);
     app->active_setting = NULL;
     menu_app_show_list(app);
     menu_app_render_list(app);
@@ -310,6 +330,38 @@ static void menu_app_handle_key(menu_app_ctx_t *app, menu_key_t key)
         if (key == MENU_KEY_BACK)
         {
             menu_app_back_from_setting(app);
+        }
+        else if ((key == MENU_KEY_UP) &&
+                 menu_setting_session_is_active(&app->setting_session))
+        {
+            if (menu_setting_session_step_up(&app->setting_session))
+            {
+                menu_app_render_setting(app);
+            }
+        }
+        else if ((key == MENU_KEY_DOWN) &&
+                 menu_setting_session_is_active(&app->setting_session))
+        {
+            if (menu_setting_session_step_down(&app->setting_session))
+            {
+                menu_app_render_setting(app);
+            }
+        }
+        else if ((key == MENU_KEY_OK) &&
+                 menu_setting_session_is_active(&app->setting_session))
+        {
+            menu_setting_session_event_t setting_event =
+                menu_setting_session_confirm(&app->setting_session);
+
+            if (setting_event == MENU_SETTING_SESSION_EVENT_CLOSE)
+            {
+                menu_app_back_from_setting(app);
+            }
+            else if ((setting_event == MENU_SETTING_SESSION_EVENT_UPDATED) ||
+                     (setting_event == MENU_SETTING_SESSION_EVENT_ERROR))
+            {
+                menu_app_render_setting(app);
+            }
         }
         break;
 

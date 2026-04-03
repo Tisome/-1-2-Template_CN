@@ -5,14 +5,20 @@
 #include "elog.h"
 #include "freertos_resources.h"
 #include "lvgl_app_test.h"
+#include "modbus_execute.h"
+#include "modbus_frame_process.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
+
+#define ENABLE_MENU_SIM_DATA_PIPELINE   1U
+#define ENABLE_MODBUS_EXECUTE_TASK      1U
 
 #define TASK_CLOCK_STACK_SIZE 256U
 #define TASK_E2PROM_STACK_SIZE 256U
 #define TASK_ELOG_STACK_SIZE 256U
 #define TASK_MODBUS_STACK_SIZE 1024U
+#define TASK_MODBUS_EXECUTE_STACK_SIZE 512U
 #define TASK_SPI_RX_STACK_SIZE 256U
 #define TASK_KEY_STACK_SIZE 512U
 #define TASK_KEY_TEST_STACK_SIZE 512U
@@ -24,6 +30,7 @@
 #define TASK_E2PROM_PRIO 4U
 #define TASK_ELOG_PRIO 6U
 #define TASK_MODBUS_PRIO 5U
+#define TASK_MODBUS_EXECUTE_PRIO 5U
 #define TASK_SPI_RX_PRIO 5U
 #define TASK_KEY_PRIO 6U
 #define TASK_KEY_TEST_PRIO 4U
@@ -122,41 +129,45 @@ static int task_test(void)
         return -1;
     }
 
-    // ret = xTaskCreate(task_key_test,
-    //                   "task_key_test",
-    //                   TASK_KEY_TEST_STACK_SIZE,
-    //                   NULL,
-    //                   TASK_KEY_TEST_PRIO,
-    //                   NULL);
-    // if (ret != pdPASS)
-    // {
-    //     log_e("create task_key_test failed");
-    //     return -1;
-    // }
+#if ENABLE_MODBUS_EXECUTE_TASK
+    ret = xTaskCreate(task_modbus_execute,
+                      "task_modbus_execute",
+                      TASK_MODBUS_EXECUTE_STACK_SIZE,
+                      NULL,
+                      TASK_MODBUS_EXECUTE_PRIO,
+                      NULL);
+    if (ret != pdPASS)
+    {
+        log_e("create task_modbus_execute failed");
+        return -1;
+    }
+#endif
 
-    // ret = xTaskCreate(task_fake_data,
-    //                   "task_fake_data",
-    //                   TASK_FAKE_DATA_STACK_SIZE,
-    //                   NULL,
-    //                   TASK_FAKE_DATA_PRIO,
-    //                   NULL);
-    // if (ret != pdPASS)
-    // {
-    //     log_e("create task_fake_data failed");
-    //     return -1;
-    // }
+#if ENABLE_MENU_SIM_DATA_PIPELINE
+    ret = xTaskCreate(task_fake_data,
+                      "task_fake_data",
+                      TASK_FAKE_DATA_STACK_SIZE,
+                      NULL,
+                      TASK_FAKE_DATA_PRIO,
+                      NULL);
+    if (ret != pdPASS)
+    {
+        log_e("create task_fake_data failed");
+        return -1;
+    }
 
-    // ret = xTaskCreate(task_algorithm,
-    //                   "task_algorithm",
-    //                   TASK_ALGORITHM_STACK_SIZE,
-    //                   NULL,
-    //                   TASK_ALGORITHM_PRIO,
-    //                   NULL);
-    // if (ret != pdPASS)
-    // {
-    //     log_e("create task_algorithm failed");
-    //     return -1;
-    // }
+    ret = xTaskCreate(task_algorithm,
+                      "task_algorithm",
+                      TASK_ALGORITHM_STACK_SIZE,
+                      NULL,
+                      TASK_ALGORITHM_PRIO,
+                      NULL);
+    if (ret != pdPASS)
+    {
+        log_e("create task_algorithm failed");
+        return -1;
+    }
+#endif
 
     vTaskStartScheduler();
 
@@ -180,5 +191,6 @@ void does_it_work(void)
 {
     freertos_resources_init();
     parameter_init();
+    init_modbus_data();
     (void)task_test();
 }

@@ -250,7 +250,8 @@ void task_fake_data(void *parameter)
             continue;
         }
 
-        if ((now_tick - last_cfg_refresh_tick) >= pdMS_TO_TICKS(FAKE_DATA_CFG_REFRESH_MS))
+        if (fake_data_consume_cfg_refresh_request() ||
+            ((now_tick - last_cfg_refresh_tick) >= pdMS_TO_TICKS(FAKE_DATA_CFG_REFRESH_MS)))
         {
             fake_data_refresh_cfg(&g_parameters, &cfg);
             last_cfg_refresh_tick = now_tick;

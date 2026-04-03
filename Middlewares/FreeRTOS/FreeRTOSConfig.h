@@ -55,7 +55,7 @@ extern uint32_t SystemCoreClock;
 #define configMAX_PRIORITIES           (15)
 #define configMINIMAL_STACK_SIZE       ((unsigned short)130)
 
-#define configTOTAL_HEAP_SIZE          ((size_t)(16 * 1024))
+#define configTOTAL_HEAP_SIZE          ((size_t)(20 * 1024))
 
 #define configMAX_TASK_NAME_LEN        (15)
 #define configUSE_TRACE_FACILITY       1
@@ -129,7 +129,7 @@ header file. */
 /* Definitions that map the FreeRTOS port interrupt handlers to their CMSIS
 standard names. */
 
-#define vPortSVCHandler    SVC_Handler
-#define xPortPendSVHandler PendSV_Handler
+#define vPortSVCHandler     SVC_Handler
+#define xPortPendSVHandler  PendSV_Handler
 #define xPortSysTickHandler SysTick_Handler
 #endif /* FREERTOS_CONFIG_H */

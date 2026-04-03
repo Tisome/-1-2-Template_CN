@@ -18,6 +18,8 @@ void menu_measure_page_create(menu_measure_page_t *page, lv_obj_t *parent)
     lv_obj_set_style_text_font(page->sq_label, menu_font_latin_12(), 0);
     lv_obj_set_style_text_color(page->sq_label, lv_color_white(), 0);
     lv_obj_align(page->sq_label, LV_ALIGN_TOP_LEFT, 10, 6);
+    page->sq_text[0] = '\0';
+    lv_label_set_text_static(page->sq_label, page->sq_text);
 
     arc_box = lv_obj_create(page->root);
     menu_prepare_page_root(arc_box);
@@ -44,9 +46,11 @@ void menu_measure_page_create(menu_measure_page_t *page, lv_obj_t *parent)
     lv_obj_set_style_text_font(page->value_label, menu_font_latin_28(), 0);
     lv_obj_set_style_text_color(page->value_label, lv_color_white(), 0);
     lv_obj_align(page->value_label, LV_ALIGN_CENTER, 0, -8);
+    page->value_text[0] = '\0';
+    lv_label_set_text_static(page->value_label, page->value_text);
 
     page->unit_label = lv_label_create(arc_box);
-    lv_label_set_text(page->unit_label, "m3/h");
+    lv_label_set_text_static(page->unit_label, "m3/h");
     lv_obj_set_style_text_font(page->unit_label, menu_font_latin_12(), 0);
     lv_obj_set_style_text_color(page->unit_label, lv_color_white(), 0);
     lv_obj_align(page->unit_label, LV_ALIGN_CENTER, 0, 28);
@@ -55,6 +59,8 @@ void menu_measure_page_create(menu_measure_page_t *page, lv_obj_t *parent)
     lv_obj_set_style_text_font(page->total_label, menu_font_latin_12(), 0);
     lv_obj_set_style_text_color(page->total_label, lv_color_white(), 0);
     lv_obj_align(page->total_label, LV_ALIGN_BOTTOM_MID, 0, -10);
+    page->total_text[0] = '\0';
+    lv_label_set_text_static(page->total_label, page->total_text);
 }
 
 void menu_measure_page_set_visible(menu_measure_page_t *page, bool visible)
@@ -82,8 +88,8 @@ void menu_measure_page_render(menu_measure_page_t *page,
     (void)snprintf(page->value_text, sizeof(page->value_text), "%06.2f", instant_flow_m3ph);
     (void)snprintf(page->total_text, sizeof(page->total_text), "%.6f  m3", total_flow_m3);
 
-    lv_label_set_text(page->sq_label, page->sq_text);
-    lv_label_set_text(page->value_label, page->value_text);
-    lv_label_set_text(page->total_label, page->total_text);
+    lv_label_set_text_static(page->sq_label, page->sq_text);
+    lv_label_set_text_static(page->value_label, page->value_text);
+    lv_label_set_text_static(page->total_label, page->total_text);
     lv_arc_set_value(page->arc, arc_value);
 }

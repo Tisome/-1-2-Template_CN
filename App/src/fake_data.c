@@ -24,6 +24,8 @@ static fake_data_cfg_t g_fake_data_cfg =
 #endif
 };
 
+static volatile uint8_t g_fake_data_cfg_refresh_pending = 0U;
+
 /* ========================= 基础工具函数 ========================= */
 
 static float fake_sine_wave(float t_s, const fake_data_cfg_t *cfg)
@@ -107,6 +109,22 @@ void fake_data_get_cfg(fake_data_cfg_t *cfg)
     }
 
     *cfg = g_fake_data_cfg;
+}
+
+void fake_data_request_cfg_refresh(void)
+{
+    g_fake_data_cfg_refresh_pending = 1U;
+}
+
+bool fake_data_consume_cfg_refresh_request(void)
+{
+    if (g_fake_data_cfg_refresh_pending == 0U)
+    {
+        return false;
+    }
+
+    g_fake_data_cfg_refresh_pending = 0U;
+    return true;
 }
 
 float fake_data_get_target_speed_mps(float t_s, const Pipe_Parameters_t *para)

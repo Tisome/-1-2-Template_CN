@@ -240,41 +240,37 @@ static void fill_parameters_from_holding_registers(Pipe_Parameters_t *para)
 /* 把当前 holding register 里的内容尝试应用到 g_parameters，并保存到 EEPROM */
 static bool apply_holding_registers_to_parameters(uint8_t *exception_code)
 {
-    Pipe_Parameters_t old_parameters = g_parameters;
     Pipe_Parameters_t new_parameters = g_parameters;
-    e2prom_status_t save_status = E2PROM_OK;
+    parameter_apply_status_t apply_status = PARAMETER_APPLY_OK;
 
     fill_parameters_from_holding_registers(&new_parameters);
-    new_parameters.is_saved = 1U;
-
-    if (!validate_parameters(&new_parameters))
+    apply_status = parameter_commit(&new_parameters);
+    if (apply_status != PARAMETER_APPLY_OK)
     {
         if (exception_code != NULL)
         {
-            *exception_code = MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE;
+            switch (apply_status)
+            {
+            case PARAMETER_APPLY_INVALID:
+                *exception_code = MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE;
+                break;
+
+            case PARAMETER_APPLY_BUSY:
+                *exception_code = MODBUS_EXCEPTION_SLAVE_DEVICE_BUSY;
+                break;
+
+            case PARAMETER_APPLY_SAVE_FAILED:
+            case PARAMETER_APPLY_UNSUPPORTED:
+            default:
+                *exception_code = MODBUS_EXCEPTION_SLAVE_DEVICE_FAILURE;
+                break;
+            }
         }
+
         update_holding_registers_from_parameters();
         return false;
     }
 
-    g_parameters = new_parameters;
-
-    save_status = SaveParameters(&g_parameters);
-    if (save_status != E2PROM_OK)
-    {
-        if (exception_code != NULL)
-        {
-            *exception_code = (save_status == E2PROM_BUSY)
-                                  ? MODBUS_EXCEPTION_SLAVE_DEVICE_BUSY
-                                  : MODBUS_EXCEPTION_SLAVE_DEVICE_FAILURE;
-        }
-        g_parameters = old_parameters;
-        update_holding_registers_from_parameters();
-        return false;
-    }
-
-    update_holding_registers_from_parameters();
-    update_input_registers();
     return true;
 }
 
@@ -666,7 +662,7 @@ void init_modbus_data(void)
     if (g_modbus_cmd_queue == NULL)
     {
         log_e("Failed to create queue for USART IRQ");
-        vTaskDelete(NULL); // 删除当前任务
+        return;
     }
 
     memset(g_modbus_coils, 0, sizeof(g_modbus_coils));

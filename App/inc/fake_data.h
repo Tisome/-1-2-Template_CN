@@ -12,6 +12,8 @@ typedef struct
 
 void fake_data_set_cfg(float lower, float upper, float period_s);
 void fake_data_get_cfg(fake_data_cfg_t *cfg);
+void fake_data_request_cfg_refresh(void);
+bool fake_data_consume_cfg_refresh_request(void);
 
 float fake_data_get_target_speed_mps(float t_s, const Pipe_Parameters_t *para);
 void fake_data_make_packet(rufx_raw_packet_t *raw, float t_s, const Pipe_Parameters_t *para);

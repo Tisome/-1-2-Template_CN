@@ -13,10 +13,58 @@ typedef enum
     MENU_ENTRY_SETTING
 } menu_entry_type_t;
 
+typedef enum
+{
+    MENU_SETTING_ID_NONE = 0,
+    MENU_SETTING_ID_PIPE_OD,
+    MENU_SETTING_ID_PIPE_WALL,
+    MENU_SETTING_ID_PIPE_MATERIAL,
+    MENU_SETTING_ID_OUTPUT_MODE,
+    MENU_SETTING_ID_FLOW_UNIT,
+    MENU_SETTING_ID_REFRESH_RATE,
+    MENU_SETTING_ID_ALARM_LOW,
+    MENU_SETTING_ID_ALARM_HIGH,
+    MENU_SETTING_ID_ZERO_LEARN,
+    MENU_SETTING_ID_SYSTEM
+} menu_setting_id_t;
+
+typedef enum
+{
+    MENU_SETTING_KIND_INFO = 0,
+    MENU_SETTING_KIND_NUMERIC,
+    MENU_SETTING_KIND_OPTION,
+    MENU_SETTING_KIND_ACTION
+} menu_setting_kind_t;
+
 typedef struct
 {
+    const char *label;
+    uint32_t value;
+} menu_setting_option_t;
+
+typedef struct
+{
+    uint8_t integer_digits;
+    uint8_t fractional_digits;
+    const char *unit_text;
+    double min_value;
+    double max_value;
+} menu_setting_numeric_spec_t;
+
+typedef struct
+{
+    const menu_setting_option_t *options;
+    uint16_t option_count;
+} menu_setting_option_spec_t;
+
+typedef struct
+{
+    menu_setting_id_t id;
     const char *title;
+    menu_setting_kind_t kind;
     const char *placeholder_text;
+    menu_setting_numeric_spec_t numeric;
+    menu_setting_option_spec_t option;
 } menu_setting_desc_t;
 
 struct menu_page;

@@ -91,7 +91,9 @@ virtualFolder:
         - path: Middlewares/LVGL/GUI_APP/code/inc/menu_list_page.h
         - path: Middlewares/LVGL/GUI_APP/code/inc/menu_measure_page.h
         - path: Middlewares/LVGL/GUI_APP/code/inc/menu_nav.h
+        - path: Middlewares/LVGL/GUI_APP/code/inc/menu_setting_backend.h
         - path: Middlewares/LVGL/GUI_APP/code/inc/menu_setting_page.h
+        - path: Middlewares/LVGL/GUI_APP/code/inc/menu_setting_session.h
         - path: Middlewares/LVGL/GUI_APP/code/inc/menu_strings.h
         - path: Middlewares/LVGL/GUI_APP/code/inc/menu_style.h
         - path: Middlewares/LVGL/GUI_APP/code/src/lvgl_app_test.c
@@ -100,7 +102,9 @@ virtualFolder:
         - path: Middlewares/LVGL/GUI_APP/code/src/menu_list_page.c
         - path: Middlewares/LVGL/GUI_APP/code/src/menu_measure_page.c
         - path: Middlewares/LVGL/GUI_APP/code/src/menu_nav.c
+        - path: Middlewares/LVGL/GUI_APP/code/src/menu_setting_backend.c
         - path: Middlewares/LVGL/GUI_APP/code/src/menu_setting_page.c
+        - path: Middlewares/LVGL/GUI_APP/code/src/menu_setting_session.c
       folders: []
 dependenceList: []
 outDir: build

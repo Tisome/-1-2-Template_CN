@@ -101,6 +101,41 @@ typedef enum {
     ALARM_RATE_TOO_HIGH
 } ALARM_TYPE;
 
+typedef enum {
+    PARAMETER_FIELD_NONE = 0,
+    PARAMETER_FIELD_INNER_DIAMETER,
+    PARAMETER_FIELD_WALL_THICK,
+    PARAMETER_FIELD_ALARM_LOWER_RATE_RANGE,
+    PARAMETER_FIELD_ALARM_UPPER_RATE_RANGE,
+    PARAMETER_FIELD_ZERO_OFFSET_SPEED,
+    PARAMETER_FIELD_ZERO_LEARN_FLOW_SPEED,
+    PARAMETER_FIELD_ZERO_LEARN_ALPHA,
+    PARAMETER_FIELD_ZERO_LEARN_OFFSET_MAX,
+    PARAMETER_FIELD_ZERO_LEARN_SQ_MIN,
+    PARAMETER_FIELD_OUTPUT_MODE,
+    PARAMETER_FIELD_DISPLAY_SENSITIVITY,
+    PARAMETER_FIELD_ZERO_STABLE_THRESHOLD,
+    PARAMETER_FIELD_MODBUS_ADDR,
+    PARAMETER_FIELD_PIPE_TYPE,
+    PARAMETER_FIELD_SPEED_UNIT_TYPE,
+    PARAMETER_FIELD_RATE_UNIT_TYPE
+} parameter_field_id_t;
+
+typedef enum {
+    PARAMETER_APPLY_OK = 0,
+    PARAMETER_APPLY_INVALID,
+    PARAMETER_APPLY_SAVE_FAILED,
+    PARAMETER_APPLY_BUSY,
+    PARAMETER_APPLY_UNSUPPORTED
+} parameter_apply_status_t;
+
+typedef enum {
+    PARAMETER_ACTION_CLEAR_TOTALIZER = 0,
+    PARAMETER_ACTION_ZERO_LEARN_START,
+    PARAMETER_ACTION_LOAD_DEFAULTS,
+    PARAMETER_ACTION_CLEAR_ALARM
+} parameter_action_t;
+
 /* ========================= 参数结构体 ========================= */
 
 typedef struct
@@ -219,6 +254,15 @@ extern ALARM_TYPE g_alarm;
 
 void parameter_init(void);
 void parameter_reset_to_default(void);
+bool parameter_validate(const Pipe_Parameters_t *para);
+void parameter_reset_measurement_state(void);
+
+bool parameter_get_double(parameter_field_id_t field_id, double *value);
+bool parameter_get_u32(parameter_field_id_t field_id, uint32_t *value);
+parameter_apply_status_t parameter_set_double(parameter_field_id_t field_id, double value);
+parameter_apply_status_t parameter_set_u32(parameter_field_id_t field_id, uint32_t value);
+parameter_apply_status_t parameter_commit(const Pipe_Parameters_t *candidate);
+parameter_apply_status_t parameter_execute_action(parameter_action_t action);
 
 double convert_speed_from_mps(double speed_mps, SpeedUnitType unit);
 double convert_rate_from_m3ps(double rate_m3ps, RateUnitType unit);
