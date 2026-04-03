@@ -347,7 +347,7 @@
 #define LV_FONT_MONTSERRAT_8                0
 #define LV_FONT_MONTSERRAT_10               0
 #define LV_FONT_MONTSERRAT_12               0
-#define LV_FONT_MONTSERRAT_14               1
+#define LV_FONT_MONTSERRAT_14               0
 #define LV_FONT_MONTSERRAT_16               0
 #define LV_FONT_MONTSERRAT_18               0
 #define LV_FONT_MONTSERRAT_20               0
@@ -379,10 +379,14 @@
 /* 可选声明自定义字体在这里。
  * 你也可以使用这些字体作为默认字体，它们将是全球可用的。
  * 如。#define LV_FONT_CUSTOM_DECLARE LV_FONT_DECLARE(my_font_1) LV_FONT_DECLARE(my_font_2) */
-#define LV_FONT_CUSTOM_DECLARE
+#define LV_FONT_CUSTOM_DECLARE               \
+    LV_FONT_DECLARE(my_chinese_font_size_14_caiti) \
+    LV_FONT_DECLARE(my_num_abc_font_size_12_regular) \
+    LV_FONT_DECLARE(my_num_abc_font_size_16_regular) \
+    LV_FONT_DECLARE(my_num_font_size_28_regular)
 
 /* 始终设置默认字体 */
-#define LV_FONT_DEFAULT                     &lv_font_montserrat_14
+#define LV_FONT_DEFAULT                     &my_num_abc_font_size_12_regular
 
 /* 启用处理大字体和/或带有大量字符的字体。
  * 限制取决于字体大小，字体面和bpp。

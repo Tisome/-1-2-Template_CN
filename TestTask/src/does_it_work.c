@@ -4,7 +4,7 @@
 #include "data.h"
 #include "elog.h"
 #include "freertos_resources.h"
-#include "Middlewares/LVGL/GUI_APP/lvgl_app_test.h"
+#include "lvgl_app_test.h"
 
 #include "FreeRTOS.h"
 #include "task.h"

@@ -76,6 +76,13 @@ virtualFolder:
         - path: Libraries/GD32F30x_standard_peripheral/GD32F30x_Lib/Src/gd32f30x_wwdgt.c
         - path: Libraries/GD32F30x_standard_peripheral/GD32F30x_Lib/Inc/gd32f30x_wwdgt.h
       folders: []
+    - name: LVGL_Fonts
+      files:
+        - path: Middlewares/LVGL/GUI_APP/font/my_chinese_font_size_14_caiti.c
+        - path: Middlewares/LVGL/GUI_APP/font/my_num_abc_font_size_12_regular.c
+        - path: Middlewares/LVGL/GUI_APP/font/my_num_abc_font_size_16_regular.c
+        - path: Middlewares/LVGL/GUI_APP/font/my_num_font_size_28_regular.c
+      folders: []
 dependenceList: []
 outDir: build
 miscInfo:
@@ -272,8 +279,10 @@ targets:
         - Middlewares/LVGL/GUI/lvgl
         - Middlewares/LVGL/GUI/lvgl/src
         - Middlewares/LVGL/GUI/lvgl/examples/porting
-        - Middlewares/LVGL/GUI_APP
+        - Middlewares/LVGL/GUI_APP/code/inc
         - Middlewares/Menus/inc
+        - Middlewares/LVGL/GUI_APP/code/src
+        - Middlewares/LVGL/GUI_APP/font
       libList: []
     excludeList:
       - Task/src
