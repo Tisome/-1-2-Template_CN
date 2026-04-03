@@ -2,11 +2,11 @@
 
 #include "bsp_key.h"
 #include "data.h"
+#include "lv_port_disp_template.h"
 #include "menu_data.h"
 #include "menu_list_page.h"
 #include "menu_measure_page.h"
 #include "menu_setting_page.h"
-#include "lv_port_disp_template.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -48,19 +48,19 @@ static menu_key_t menu_app_map_key(uint8_t raw_key)
     {
     case KEY1_PRESS:
     case KEY1_LONG_PRESS:
-        return MENU_KEY_OK;
+        return MENU_KEY_BACK;
 
     case KEY2_PRESS:
     case KEY2_LONG_PRESS:
-        return MENU_KEY_UP;
+        return MENU_KEY_DOWN;
 
     case KEY3_PRESS:
     case KEY3_LONG_PRESS:
-        return MENU_KEY_DOWN;
+        return MENU_KEY_UP;
 
     case KEY4_PRESS:
     case KEY4_LONG_PRESS:
-        return MENU_KEY_BACK;
+        return MENU_KEY_OK;
 
     default:
         return MENU_KEY_NONE;

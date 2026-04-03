@@ -22,7 +22,7 @@ void menu_measure_page_create(menu_measure_page_t *page, lv_obj_t *parent)
     arc_box = lv_obj_create(page->root);
     menu_prepare_page_root(arc_box);
     lv_obj_set_size(arc_box, 190, 190);
-    lv_obj_align(arc_box, LV_ALIGN_TOP_MID, 0, 18);
+    lv_obj_align(arc_box, LV_ALIGN_TOP_MID, 0, 25);
 
     page->arc = lv_arc_create(arc_box);
     lv_obj_set_size(page->arc, 188, 188);
