@@ -65,6 +65,7 @@ static void fake_data_get_speed_range(const Pipe_Parameters_t *para,
     double speed_high = 0.0;
     double alarm_low_speed = 0.0;
     double alarm_high_speed = 0.0;
+    double alarm_margin = 0.0;
 
     if ((para == NULL) || (lower_speed_mps == NULL) || (upper_speed_mps == NULL))
     {
@@ -113,14 +114,16 @@ static void fake_data_get_speed_range(const Pipe_Parameters_t *para,
                                                      para->rate_unit_type)) /
                            area_m2;
 
-        if (alarm_low_speed > 0.0)
+        if ((alarm_low_speed > 0.0) && (alarm_high_speed > alarm_low_speed))
         {
-            speed_low = alarm_low_speed * 0.7;
-        }
+            alarm_margin = (alarm_high_speed - alarm_low_speed) * 0.15;
+            if (alarm_margin < 0.05)
+            {
+                alarm_margin = 0.05;
+            }
 
-        if (alarm_high_speed > 0.0)
-        {
-            speed_high = alarm_high_speed * 1.3;
+            speed_low = alarm_low_speed + alarm_margin;
+            speed_high = alarm_high_speed - alarm_margin;
         }
     }
 

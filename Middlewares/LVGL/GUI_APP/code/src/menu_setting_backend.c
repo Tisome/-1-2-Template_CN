@@ -287,8 +287,9 @@ bool menu_setting_backend_build_view(const menu_setting_desc_t *setting,
     case MENU_SETTING_ID_SYSTEM:
         (void)snprintf(view->detail_text,
                        sizeof(view->detail_text),
-                       "ADDR:%u\nSAVED:%u",
+                       "ADDR:%u\nSTORE:%s\nSAVED:%u",
                        (unsigned int)g_parameters.modbus_addr,
+                       parameter_storage_is_persistent() ? "EEPROM" : "RUNTIME",
                        (unsigned int)g_parameters.is_saved);
         view->show_value_box = false;
         return true;

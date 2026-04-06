@@ -7,31 +7,33 @@
 #include "lvgl_app_test.h"
 #include "modbus_execute.h"
 #include "modbus_frame_process.h"
+#include "modbus_parse.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
 
 #define ENABLE_MENU_SIM_DATA_PIPELINE   1U
+#define ENABLE_MODBUS_PARSE_TASK        1U
 #define ENABLE_MODBUS_EXECUTE_TASK      1U
 
 #define TASK_CLOCK_STACK_SIZE 256U
 #define TASK_E2PROM_STACK_SIZE 256U
-#define TASK_ELOG_STACK_SIZE 512U
-#define TASK_MODBUS_STACK_SIZE 1024U
-#define TASK_MODBUS_EXECUTE_STACK_SIZE 512U
+#define TASK_ELOG_STACK_SIZE 384U
+#define TASK_MODBUS_PARSE_STACK_SIZE 768U
+#define TASK_MODBUS_EXECUTE_STACK_SIZE 384U
 #define TASK_SPI_RX_STACK_SIZE 256U
-#define TASK_KEY_STACK_SIZE 512U
+#define TASK_KEY_STACK_SIZE 384U
 #define TASK_KEY_TEST_STACK_SIZE 512U
-#define TASK_FAKE_DATA_STACK_SIZE 512U
-#define TASK_ALGORITHM_STACK_SIZE 768U
+#define TASK_FAKE_DATA_STACK_SIZE 384U
+#define TASK_ALGORITHM_STACK_SIZE 512U
 #define TASK_LVGL_TEST_STACK_SIZE 1024U
 
 #define TASK_CLOCK_PRIO 4U
 #define TASK_E2PROM_PRIO 4U
 #define TASK_ELOG_PRIO 3U
-#define TASK_MODBUS_PRIO 5U
+#define TASK_MODBUS_PARSE_PRIO 5U
 #define TASK_MODBUS_EXECUTE_PRIO 5U
-#define TASK_SPI_RX_PRIO 5U
+#define TASK_SPI_RX_PRIO 7U
 #define TASK_KEY_PRIO 5U
 #define TASK_KEY_TEST_PRIO 4U
 #define TASK_FAKE_DATA_PRIO 4U
@@ -69,17 +71,19 @@ static int task_test(void)
     //     return -1;
     // }
 
-    // ret = xTaskCreate(task_modbus,
-    //                   "task_modbus",
-    //                   TASK_MODBUS_STACK_SIZE,
-    //                   NULL,
-    //                   TASK_MODBUS_PRIO,
-    //                   &task_modbus_handler);
-    // if (ret != pdPASS)
-    // {
-    //     log_e("create task_modbus failed");
-    //     return -1;
-    // }
+#if ENABLE_MODBUS_PARSE_TASK
+    ret = xTaskCreate(task_modbus_parse,
+                      "task_modbus",
+                      TASK_MODBUS_PARSE_STACK_SIZE,
+                      NULL,
+                      TASK_MODBUS_PARSE_PRIO,
+                      &task_modbus_handler);
+    if (ret != pdPASS)
+    {
+        log_e("create task_modbus failed");
+        return -1;
+    }
+#endif
 
     // ret = xTaskCreate(task_spi_rx,
     //                   "taske_spi_rx",

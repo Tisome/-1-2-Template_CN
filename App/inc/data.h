@@ -262,7 +262,9 @@ bool parameter_get_u32(parameter_field_id_t field_id, uint32_t *value);
 parameter_apply_status_t parameter_set_double(parameter_field_id_t field_id, double value);
 parameter_apply_status_t parameter_set_u32(parameter_field_id_t field_id, uint32_t value);
 parameter_apply_status_t parameter_commit(const Pipe_Parameters_t *candidate);
+parameter_apply_status_t parameter_save_current(void);
 parameter_apply_status_t parameter_execute_action(parameter_action_t action);
+bool parameter_storage_is_persistent(void);
 
 double convert_speed_from_mps(double speed_mps, SpeedUnitType unit);
 double convert_rate_from_m3ps(double rate_m3ps, RateUnitType unit);

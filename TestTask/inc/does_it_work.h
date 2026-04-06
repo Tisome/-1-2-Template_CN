@@ -15,6 +15,7 @@ void task_clock(void *p);
 void task_elog(void *p);
 void task_e2prom(void *p);
 void task_modbus(void *p);
+void task_modbus_parse(void *parameter);
 void task_spi_rx(void *p);
 void task_key_test(void *p);
 void task_fake_data(void *p);

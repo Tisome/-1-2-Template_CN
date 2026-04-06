@@ -28,6 +28,7 @@ uint16_t g_modbus_holding_registers[MODBUS_HOLDING_REG_COUNT];
 uint16_t g_modbus_input_registers[MODBUS_INPUT_REG_COUNT];
 
 QueueHandle_t g_modbus_cmd_queue;
+static uint8_t s_modbus_tx_frame[260];
 
 /* -------------------- 函数声明 -------------------- */
 static void modbus_send_response(uint8_t address,
@@ -614,28 +615,27 @@ static void handle_write_multiple_registers(modbus_parser_t *parser)
 
 static void modbus_send_response(uint8_t address, uint8_t function, uint8_t *data, uint8_t data_len)
 {
-    uint8_t frame[260];
     uint16_t crc = 0xFFFF;
     uint16_t frame_len = 0;
 
-    frame[frame_len++] = address;
-    frame[frame_len++] = function;
+    s_modbus_tx_frame[frame_len++] = address;
+    s_modbus_tx_frame[frame_len++] = function;
 
     for (uint16_t i = 0; i < data_len; i++)
     {
-        frame[frame_len++] = data[i];
+        s_modbus_tx_frame[frame_len++] = data[i];
     }
 
     for (uint16_t i = 0; i < frame_len; i++)
     {
-        crc = modbus_crc_update(crc, frame[i]);
+        crc = modbus_crc_update(crc, s_modbus_tx_frame[i]);
     }
 
     /* Modbus RTU: CRC低字节在前 */
-    frame[frame_len++] = (uint8_t)(crc & 0xFF);
-    frame[frame_len++] = (uint8_t)((crc >> 8) & 0xFF);
+    s_modbus_tx_frame[frame_len++] = (uint8_t)(crc & 0xFF);
+    s_modbus_tx_frame[frame_len++] = (uint8_t)((crc >> 8) & 0xFF);
 
-    usart0_send_modbus_bytes(frame, frame_len);
+    usart0_send_modbus_bytes(s_modbus_tx_frame, frame_len);
 }
 
 /* -------------------- 异常响应 -------------------- */

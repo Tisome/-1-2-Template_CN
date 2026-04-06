@@ -47,14 +47,14 @@ Pipe_algo_out_data_t g_algo_out =
         .flow_rate_total = 0.0,
         .sq_value = 0.0,
         .flow_speed_unit = SPEED_UNIT_M_P_S,
-        .flow_rate_unit = RATE_UNIT_L_P_MIN,
-        .flow_total_unit = VOLUME_UNIT_L};
+        .flow_rate_unit = RATE_UNIT_M3_P_H,
+        .flow_total_unit = VOLUME_UNIT_M3};
 
 ALARM_TYPE g_alarm = ALARM_OK;
 
-static Pipe_Parameters_t make_default_pipe_parameters(void)
+static const Pipe_Parameters_t *get_default_pipe_parameters_ptr(void)
 {
-    Pipe_Parameters_t default_pipe_parameters =
+    static const Pipe_Parameters_t s_default_pipe_parameters =
         {
             .inner_diameter = 20.0,
             .wall_thick = 1.0,
@@ -64,8 +64,8 @@ static Pipe_Parameters_t make_default_pipe_parameters(void)
             .lower_speed_range = 0.05,
             .upper_speed_range = 20.0,
 
-            .alarm_lower_rate_range = 10.0,
-            .alarm_upper_rate_range = 40.0,
+            .alarm_lower_rate_range = 2.0,
+            .alarm_upper_rate_range = 20.0,
 
             .zero_offset_speed = 0.0,
             .zero_learn_flow_speed = 0.08,
@@ -86,9 +86,14 @@ static Pipe_Parameters_t make_default_pipe_parameters(void)
 
             .pipe_type = PIPE_PVC,
             .speed_unit_type = SPEED_UNIT_M_P_S,
-            .rate_unit_type = RATE_UNIT_L_P_MIN};
+            .rate_unit_type = RATE_UNIT_M3_P_H};
 
-    return default_pipe_parameters;
+    return &s_default_pipe_parameters;
+}
+
+static Pipe_Parameters_t make_default_pipe_parameters(void)
+{
+    return *get_default_pipe_parameters_ptr();
 }
 
 static kalman_t make_default_kalman_state(void)
@@ -238,6 +243,45 @@ static parameter_apply_status_t parameter_status_from_eeprom(e2prom_status_t sta
     default:
         return PARAMETER_APPLY_SAVE_FAILED;
     }
+}
+
+bool parameter_storage_is_persistent(void)
+{
+#if USE_E2PROM
+    return true;
+#else
+    return false;
+#endif
+}
+
+static uint32_t parameter_saved_flag_for_board(void)
+{
+    return parameter_storage_is_persistent() ? 1U : 0U;
+}
+
+static parameter_apply_status_t parameter_try_save_current_state(Pipe_Parameters_t *para)
+{
+    e2prom_status_t save_status = E2PROM_OK;
+
+    if (para == NULL)
+    {
+        return PARAMETER_APPLY_INVALID;
+    }
+
+    if (!parameter_storage_is_persistent())
+    {
+        para->is_saved = 0U;
+        return PARAMETER_APPLY_OK;
+    }
+
+    para->is_saved = 1U;
+    save_status = SaveParameters(para);
+    if (save_status != E2PROM_OK)
+    {
+        para->is_saved = 0U;
+    }
+
+    return parameter_status_from_eeprom(save_status);
 }
 
 double convert_speed_from_mps(double speed_mps, SpeedUnitType unit)
@@ -602,7 +646,7 @@ parameter_apply_status_t parameter_commit(const Pipe_Parameters_t *candidate)
     Pipe_Parameters_t old_parameters = g_parameters;
     Pipe_Parameters_t new_parameters;
     bool need_measurement_reset = false;
-    e2prom_status_t save_status = E2PROM_OK;
+    parameter_apply_status_t apply_status = PARAMETER_APPLY_OK;
 
     if (candidate == NULL)
     {
@@ -610,7 +654,7 @@ parameter_apply_status_t parameter_commit(const Pipe_Parameters_t *candidate)
     }
 
     new_parameters = *candidate;
-    new_parameters.is_saved = 1U;
+    new_parameters.is_saved = parameter_saved_flag_for_board();
 
     if (!parameter_validate(&new_parameters))
     {
@@ -621,21 +665,21 @@ parameter_apply_status_t parameter_commit(const Pipe_Parameters_t *candidate)
                                                                         &new_parameters);
 
     if (parameter_configuration_equal(&old_parameters, &new_parameters) &&
-        (old_parameters.is_saved == 1U))
+        (old_parameters.is_saved == new_parameters.is_saved))
     {
-        g_parameters.is_saved = 1U;
+        g_parameters.is_saved = new_parameters.is_saved;
         parameter_sync_external_state();
         return PARAMETER_APPLY_OK;
     }
 
     g_parameters = new_parameters;
 
-    save_status = SaveParameters(&g_parameters);
-    if (save_status != E2PROM_OK)
+    apply_status = parameter_try_save_current_state(&g_parameters);
+    if (apply_status != PARAMETER_APPLY_OK)
     {
         g_parameters = old_parameters;
         parameter_sync_external_state();
-        return parameter_status_from_eeprom(save_status);
+        return apply_status;
     }
 
     if (need_measurement_reset)
@@ -645,6 +689,20 @@ parameter_apply_status_t parameter_commit(const Pipe_Parameters_t *candidate)
 
     parameter_sync_external_state();
     return PARAMETER_APPLY_OK;
+}
+
+parameter_apply_status_t parameter_save_current(void)
+{
+    parameter_apply_status_t apply_status = PARAMETER_APPLY_OK;
+
+    if (!parameter_validate(&g_parameters))
+    {
+        return PARAMETER_APPLY_INVALID;
+    }
+
+    apply_status = parameter_try_save_current_state(&g_parameters);
+    parameter_sync_external_state();
+    return apply_status;
 }
 
 parameter_apply_status_t parameter_set_double(parameter_field_id_t field_id, double value)
@@ -739,8 +797,6 @@ parameter_apply_status_t parameter_set_u32(parameter_field_id_t field_id, uint32
 
 parameter_apply_status_t parameter_execute_action(parameter_action_t action)
 {
-    e2prom_status_t save_status = E2PROM_OK;
-
     switch (action)
     {
     case PARAMETER_ACTION_CLEAR_TOTALIZER:
@@ -755,21 +811,10 @@ parameter_apply_status_t parameter_execute_action(parameter_action_t action)
             return PARAMETER_APPLY_INVALID;
         }
 
-        g_parameters.is_saved = 1U;
-        save_status = SaveParameters(&g_parameters);
-        if (save_status != E2PROM_OK)
-        {
-            g_parameters.is_saved = 0U;
-        }
-
-        parameter_sync_external_state();
-        return parameter_status_from_eeprom(save_status);
+        return parameter_save_current();
 
     case PARAMETER_ACTION_LOAD_DEFAULTS:
-    {
-        Pipe_Parameters_t defaults = make_default_pipe_parameters();
-        return parameter_commit(&defaults);
-    }
+        return parameter_commit(get_default_pipe_parameters_ptr());
 
     case PARAMETER_ACTION_CLEAR_ALARM:
         g_alarm = ALARM_OK;

@@ -37,7 +37,10 @@ void task_modbus_execute(void *parameter)
             break;
 
         case MODBUS_CMD_SAVE_PARAMETERS:
-            (void)parameter_commit(&g_parameters);
+            if (parameter_save_current() != PARAMETER_APPLY_OK)
+            {
+                log_e("save parameters command failed");
+            }
             break;
 
         case MODBUS_CMD_LOAD_DEFAULT_PARAMETERS:
@@ -49,7 +52,8 @@ void task_modbus_execute(void *parameter)
             break;
 
         case MODBUS_CMD_SOFT_RESET:
-            if (SaveParameters(&g_parameters) != E2PROM_OK)
+            if (parameter_storage_is_persistent() &&
+                (parameter_save_current() != PARAMETER_APPLY_OK))
             {
                 log_e("save parameters before reset failed");
             }
