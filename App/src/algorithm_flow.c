@@ -1,9 +1,11 @@
 ﻿#include "algorithm_flow.h"
+#define LOG_TAG "algo_flow"
+#define LOG_LVL ELOG_LVL_ERROR
+
 #include <math.h>
 #include <string.h>
 
 #include "elog.h"
-#define LOG_LVL ELOG_LVL_VERBOSE
 
 // 鏇存柊 3 绉掔獥鍙ｅ潖鏁版嵁缁熻锛堢幆褰㈢紦鍐诧級
 void sq_window_update(Pipe_algo_state_t *s, bool is_bad)

@@ -88,10 +88,10 @@
  ***********************************************************************************/
  
 /* 默认的显示刷新周期。LVGL使用这个周期重绘修改过的区域 */
-#define LV_DISP_DEF_REFR_PERIOD             4      /*[ms]*/
+#define LV_DISP_DEF_REFR_PERIOD             16     /*[ms]*/
 
 /* 输入设备的读取周期(以毫秒为单位) */
-#define LV_INDEV_DEF_READ_PERIOD            4     /*[ms]*/
+#define LV_INDEV_DEF_READ_PERIOD            20     /*[ms]*/
 
 /* 使用自定义tick源，以毫秒为单位告诉运行时间。它不需要手动更新 `lv_tick_inc()` */
 #define LV_TICK_CUSTOM                      1

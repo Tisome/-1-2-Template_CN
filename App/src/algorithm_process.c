@@ -2,10 +2,12 @@
 #include "algorithm_flow.h"
 #include "app_config.h"
 
+#define LOG_TAG "algo_proc"
+#define LOG_LVL ELOG_LVL_ERROR
+
 #include <stdbool.h>
 
 #include "elog.h"
-#define LOG_LVL ELOG_LVL_VERBOSE
 
 extern kalman_t kf;
 extern ALARM_TYPE g_alarm;

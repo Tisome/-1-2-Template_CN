@@ -1,7 +1,11 @@
 #include "menu_app.h"
 
+#define LOG_TAG "menu_app"
+#define LOG_LVL ELOG_LVL_INFO
+
 #include "bsp_key.h"
 #include "data.h"
+#include "elog.h"
 #include "lv_port_disp_template.h"
 #include "menu_data.h"
 #include "menu_list_page.h"
@@ -11,10 +15,23 @@
 #include "menu_setting_session.h"
 
 #include "FreeRTOS.h"
+#include "portable.h"
 #include "task.h"
 
 #include <math.h>
 #include <string.h>
+
+/* `display_sensitivity` is configured in Hz. */
+#define MENU_MEASURE_REFRESH_MIN_HZ      1U
+#define MENU_MEASURE_REFRESH_MAX_HZ      25U
+#define MENU_RUNTIME_MONITOR_PERIOD_MS   5000U
+#define MENU_RUNTIME_WARN_STACK_WORDS    96U
+#define MENU_RUNTIME_WARN_RTOS_HEAP_MIN  2048U
+#define MENU_RUNTIME_WARN_LVGL_HEAP_MIN  2048U
+
+#define MENU_APP_DIAG_FLAG_STACK_LOW     (1UL << 0)
+#define MENU_APP_DIAG_FLAG_RTOS_HEAP_LOW (1UL << 1)
+#define MENU_APP_DIAG_FLAG_LVGL_HEAP_LOW (1UL << 2)
 
 typedef enum
 {
@@ -43,7 +60,35 @@ typedef struct
     menu_setting_page_t setting_page;
 } menu_app_ctx_t;
 
+typedef struct
+{
+    uint32_t monitor_seq;
+    uint32_t current_screen;
+    uint32_t last_key;
+    uint32_t lvgl_handler_enter_count;
+    uint32_t lvgl_handler_exit_count;
+    uint32_t menu_tick_enter_count;
+    uint32_t menu_tick_exit_count;
+    uint32_t measure_render_count;
+    uint32_t last_loop_tick;
+    uint32_t last_tick_cb_tick;
+    uint32_t last_measure_render_tick;
+    uint32_t last_monitor_tick;
+    uint32_t gui_stack_words;
+    uint32_t rtos_free_heap_bytes;
+    uint32_t rtos_min_ever_free_heap_bytes;
+    uint32_t lvgl_free_bytes;
+    uint32_t lvgl_biggest_free_bytes;
+    uint32_t lvgl_frag_pct;
+    uint32_t warning_flags;
+} menu_app_diag_snapshot_t;
+
 static menu_app_ctx_t s_menu_app;
+static uint32_t s_last_measure_render_tick = 0U;
+static uint32_t s_last_runtime_monitor_tick = 0U;
+
+/* Visible in Ozone to check whether the GUI task is still making progress. */
+volatile menu_app_diag_snapshot_t g_menu_app_diag_snapshot;
 
 static menu_key_t menu_app_map_key(uint8_t raw_key)
 {
@@ -115,6 +160,84 @@ static double menu_app_get_arc_full_scale_m3ph(void)
     return full_scale_m3ph;
 }
 
+static uint32_t menu_app_get_measure_refresh_period_ms(void)
+{
+    uint32_t refresh_hz = g_parameters.display_sensitivity;
+    uint32_t period_ms;
+
+    if (refresh_hz < MENU_MEASURE_REFRESH_MIN_HZ)
+    {
+        refresh_hz = MENU_MEASURE_REFRESH_MIN_HZ;
+    }
+    else if (refresh_hz > MENU_MEASURE_REFRESH_MAX_HZ)
+    {
+        refresh_hz = MENU_MEASURE_REFRESH_MAX_HZ;
+    }
+
+    period_ms = 1000U / refresh_hz;
+    if (period_ms < MENU_KEY_POLL_PERIOD_MS)
+    {
+        period_ms = MENU_KEY_POLL_PERIOD_MS;
+    }
+
+    return period_ms;
+}
+
+static void menu_app_monitor_runtime(void)
+{
+    lv_mem_monitor_t mem_mon;
+    UBaseType_t stack_words;
+    uint32_t rtos_free;
+    uint32_t warning_flags = 0U;
+
+    if ((s_last_runtime_monitor_tick != 0U) &&
+        (lv_tick_elaps(s_last_runtime_monitor_tick) < MENU_RUNTIME_MONITOR_PERIOD_MS))
+    {
+        return;
+    }
+
+    s_last_runtime_monitor_tick = lv_tick_get();
+    lv_mem_monitor(&mem_mon);
+    stack_words = uxTaskGetStackHighWaterMark(NULL);
+    rtos_free = (uint32_t)xPortGetFreeHeapSize();
+
+    if (stack_words < MENU_RUNTIME_WARN_STACK_WORDS)
+    {
+        warning_flags |= MENU_APP_DIAG_FLAG_STACK_LOW;
+    }
+
+    if (rtos_free < MENU_RUNTIME_WARN_RTOS_HEAP_MIN)
+    {
+        warning_flags |= MENU_APP_DIAG_FLAG_RTOS_HEAP_LOW;
+    }
+
+    if (mem_mon.free_biggest_size < MENU_RUNTIME_WARN_LVGL_HEAP_MIN)
+    {
+        warning_flags |= MENU_APP_DIAG_FLAG_LVGL_HEAP_LOW;
+    }
+
+    g_menu_app_diag_snapshot.monitor_seq++;
+    g_menu_app_diag_snapshot.current_screen = (uint32_t)s_menu_app.current_screen;
+    g_menu_app_diag_snapshot.last_monitor_tick = s_last_runtime_monitor_tick;
+    g_menu_app_diag_snapshot.gui_stack_words = (uint32_t)stack_words;
+    g_menu_app_diag_snapshot.rtos_free_heap_bytes = rtos_free;
+    g_menu_app_diag_snapshot.rtos_min_ever_free_heap_bytes = (uint32_t)xPortGetMinimumEverFreeHeapSize();
+    g_menu_app_diag_snapshot.lvgl_free_bytes = (uint32_t)mem_mon.free_size;
+    g_menu_app_diag_snapshot.lvgl_biggest_free_bytes = (uint32_t)mem_mon.free_biggest_size;
+    g_menu_app_diag_snapshot.lvgl_frag_pct = (uint32_t)mem_mon.frag_pct;
+    g_menu_app_diag_snapshot.warning_flags = warning_flags;
+
+    if (warning_flags != 0U)
+    {
+        log_w("GUI margin low: stack=%lu words, rtos_free=%lu, lvgl_free=%lu, lvgl_biggest=%lu, lvgl_frag=%u%%",
+              (unsigned long)stack_words,
+              (unsigned long)rtos_free,
+              (unsigned long)mem_mon.free_size,
+              (unsigned long)mem_mon.free_biggest_size,
+              (unsigned int)mem_mon.frag_pct);
+    }
+}
+
 static void menu_app_hide_all(menu_app_ctx_t *app)
 {
     menu_measure_page_set_visible(&app->measure_page, false);
@@ -153,6 +276,10 @@ static void menu_app_render_measure(menu_app_ctx_t *app)
                              instant_flow_m3ph,
                              total_flow_m3,
                              arc_value);
+    s_last_measure_render_tick = lv_tick_get();
+    g_menu_app_diag_snapshot.measure_render_count++;
+    g_menu_app_diag_snapshot.last_measure_render_tick = s_last_measure_render_tick;
+    g_menu_app_diag_snapshot.current_screen = (uint32_t)app->current_screen;
 }
 
 static void menu_app_render_list(menu_app_ctx_t *app)
@@ -279,6 +406,9 @@ static void menu_app_handle_ok(menu_app_ctx_t *app)
 
 static void menu_app_handle_key(menu_app_ctx_t *app, menu_key_t key)
 {
+    g_menu_app_diag_snapshot.last_key = (uint32_t)key;
+    g_menu_app_diag_snapshot.current_screen = (uint32_t)app->current_screen;
+
     switch (app->current_screen)
     {
     case MENU_SCREEN_MEASURE:
@@ -401,6 +531,10 @@ static void menu_app_tick_cb(lv_timer_t *timer)
 
     LV_UNUSED(timer);
 
+    g_menu_app_diag_snapshot.menu_tick_enter_count++;
+    g_menu_app_diag_snapshot.last_tick_cb_tick = (uint32_t)xTaskGetTickCount();
+    g_menu_app_diag_snapshot.current_screen = (uint32_t)s_menu_app.current_screen;
+
     key = menu_app_map_key(key_scan(0U));
     if (key != MENU_KEY_NONE)
     {
@@ -409,8 +543,15 @@ static void menu_app_tick_cb(lv_timer_t *timer)
 
     if (s_menu_app.current_screen == MENU_SCREEN_MEASURE)
     {
-        menu_app_render_measure(&s_menu_app);
+        if ((s_last_measure_render_tick == 0U) ||
+            (lv_tick_elaps(s_last_measure_render_tick) >= menu_app_get_measure_refresh_period_ms()))
+        {
+            menu_app_render_measure(&s_menu_app);
+        }
     }
+
+    menu_app_monitor_runtime();
+    g_menu_app_diag_snapshot.menu_tick_exit_count++;
 }
 
 void menu_app_task(void *p)
@@ -424,7 +565,11 @@ void menu_app_task(void *p)
 
     while (1)
     {
+        g_menu_app_diag_snapshot.lvgl_handler_enter_count++;
         lv_timer_handler();
+        g_menu_app_diag_snapshot.lvgl_handler_exit_count++;
+        g_menu_app_diag_snapshot.last_loop_tick = (uint32_t)xTaskGetTickCount();
+        g_menu_app_diag_snapshot.current_screen = (uint32_t)s_menu_app.current_screen;
         vTaskDelay(pdMS_TO_TICKS(5U));
     }
 }

@@ -1,6 +1,7 @@
 #include "menu_measure_page.h"
 
 #include <stdio.h>
+#include <string.h>
 
 void menu_measure_page_create(menu_measure_page_t *page, lv_obj_t *parent)
 {
@@ -79,17 +80,39 @@ void menu_measure_page_render(menu_measure_page_t *page,
                               double total_flow_m3,
                               int16_t arc_value)
 {
+    char sq_text[sizeof(page->sq_text)];
+    char value_text[sizeof(page->value_text)];
+    char total_text[sizeof(page->total_text)];
+
     if (page == NULL)
     {
         return;
     }
 
-    (void)snprintf(page->sq_text, sizeof(page->sq_text), "SQ: %.2f", sq_value);
-    (void)snprintf(page->value_text, sizeof(page->value_text), "%06.2f", instant_flow_m3ph);
-    (void)snprintf(page->total_text, sizeof(page->total_text), "%.6f  m3", total_flow_m3);
+    (void)snprintf(sq_text, sizeof(sq_text), "SQ: %.2f", sq_value);
+    (void)snprintf(value_text, sizeof(value_text), "%06.2f", instant_flow_m3ph);
+    (void)snprintf(total_text, sizeof(total_text), "%.6f  m3", total_flow_m3);
 
-    lv_label_set_text_static(page->sq_label, page->sq_text);
-    lv_label_set_text_static(page->value_label, page->value_text);
-    lv_label_set_text_static(page->total_label, page->total_text);
-    lv_arc_set_value(page->arc, arc_value);
+    if (strcmp(page->sq_text, sq_text) != 0)
+    {
+        (void)strcpy(page->sq_text, sq_text);
+        lv_label_set_text_static(page->sq_label, page->sq_text);
+    }
+
+    if (strcmp(page->value_text, value_text) != 0)
+    {
+        (void)strcpy(page->value_text, value_text);
+        lv_label_set_text_static(page->value_label, page->value_text);
+    }
+
+    if (strcmp(page->total_text, total_text) != 0)
+    {
+        (void)strcpy(page->total_text, total_text);
+        lv_label_set_text_static(page->total_label, page->total_text);
+    }
+
+    if (lv_arc_get_value(page->arc) != arc_value)
+    {
+        lv_arc_set_value(page->arc, arc_value);
+    }
 }
