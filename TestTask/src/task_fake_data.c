@@ -1,3 +1,8 @@
+/*
+ * 假数据任务文件。
+ * 本文件用于在没有真实传感器输入时构造周期变化的测试数据包，
+ * 让算法、界面和 Modbus 子系统都能在 RCT6 板上完成联调。
+ */
 #include "fake_data.h"
 #include "freertos_resources.h"
 
@@ -14,6 +19,7 @@
 #define FAKE_DATA_CFG_REFRESH_MS 1000U
 #define FAKE_DATA_LOG_PERIOD_MS  5000U
 
+/* 由当前管道内径计算横截面积，供假数据的流速/流量换算使用。 */
 static double fake_pipe_area_m2(const Pipe_Parameters_t *para)
 {
     double d_m = 0.0;
@@ -29,6 +35,7 @@ static double fake_pipe_area_m2(const Pipe_Parameters_t *para)
     return M_PI * r_m * r_m;
 }
 
+/* 将不同流量单位统一换算为 m^3/s，便于统一做阈值和范围计算。 */
 static double convert_rate_to_m3ps(double rate, RateUnitType unit)
 {
     switch (unit)
@@ -54,6 +61,10 @@ static double convert_rate_to_m3ps(double rate, RateUnitType unit)
     }
 }
 
+/*
+ * 根据当前参数自动推导假数据目标流速范围。
+ * 优先参考流速上下限和报警上下限，尽量让假数据落在“可测且不过度报警”的区间内。
+ */
 static void fake_data_get_speed_range(const Pipe_Parameters_t *para,
                                       float *lower_speed_mps,
                                       float *upper_speed_mps)
@@ -162,6 +173,7 @@ static void fake_data_get_speed_range(const Pipe_Parameters_t *para,
     *upper_speed_mps = (float)speed_high;
 }
 
+/* 刷新假数据配置，使波形范围跟随当前管道参数和报警参数变化。 */
 static void fake_data_refresh_cfg(const Pipe_Parameters_t *para,
                                   fake_data_cfg_t *cfg)
 {
@@ -192,6 +204,7 @@ static void fake_data_refresh_cfg(const Pipe_Parameters_t *para,
     fake_data_get_cfg(cfg);
 }
 
+/* 输出当前假数据配置和当前目标值，主要用于测试阶段快速确认数据是否合理。 */
 static void fake_data_log_cfg(const fake_data_cfg_t *cfg,
                               const Pipe_Parameters_t *para,
                               float time_s)
@@ -220,6 +233,11 @@ static void fake_data_log_cfg(const fake_data_cfg_t *cfg,
 #endif
 }
 
+/*
+ * 假数据任务主循环。
+ * 它按 `GROUP_PERIOD_MS` 固定周期运行，每次生成一帧原始数据并覆盖写入接收队列，
+ * 这样算法任务就可以像处理真实数据一样继续工作。
+ */
 void task_fake_data(void *parameter)
 {
     TickType_t last_wake_tick = 0U;

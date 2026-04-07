@@ -1,8 +1,14 @@
+/*
+ * 测量页组件文件。
+ * 本文件只关心“测量页这一张页面”本身的 LVGL 组件创建和刷新，
+ * 不处理按键逻辑、页面切换或业务参数读写，这些由 `menu_app.c` 负责。
+ */
 #include "menu_measure_page.h"
 
 #include <stdio.h>
 #include <string.h>
 
+/* 创建测量页控件，包括 SQ、圆弧、瞬时流量和累计量显示。 */
 void menu_measure_page_create(menu_measure_page_t *page, lv_obj_t *parent)
 {
     lv_obj_t *arc_box;
@@ -64,6 +70,7 @@ void menu_measure_page_create(menu_measure_page_t *page, lv_obj_t *parent)
     lv_label_set_text_static(page->total_label, page->total_text);
 }
 
+/* 控制测量页显隐，供页面切换时使用。 */
 void menu_measure_page_set_visible(menu_measure_page_t *page, bool visible)
 {
     if (page == NULL)
@@ -74,6 +81,11 @@ void menu_measure_page_set_visible(menu_measure_page_t *page, bool visible)
     menu_set_page_hidden(page->root, !visible);
 }
 
+/*
+ * 刷新测量页内容。
+ * 这里会先比较文本是否真的变化，再决定是否更新控件，
+ * 这样可以减少不必要的重绘和 SPI 刷屏压力。
+ */
 void menu_measure_page_render(menu_measure_page_t *page,
                               double sq_value,
                               double instant_flow_m3ph,

@@ -1,3 +1,13 @@
+/*
+ * 菜单应用主控文件。
+ * 本文件是当前 LVGL 界面的调度中心，负责：
+ * 1. 创建各页面组件
+ * 2. 处理按键并完成页面切换
+ * 3. 从算法与参数全局状态中提取显示数据
+ * 4. 维护 GUI 任务的运行时诊断信息
+ *
+ * 若要理解“按键如何驱动界面”和“测量页为何按某个频率刷新”，这里是主入口。
+ */
 #include "menu_app.h"
 
 #define LOG_TAG "menu_app"
@@ -90,6 +100,7 @@ static uint32_t s_last_runtime_monitor_tick = 0U;
 /* Visible in Ozone to check whether the GUI task is still making progress. */
 volatile menu_app_diag_snapshot_t g_menu_app_diag_snapshot;
 
+/* 将底层按键值转换为菜单系统内部统一使用的按键枚举。 */
 static menu_key_t menu_app_map_key(uint8_t raw_key)
 {
     switch (raw_key)
@@ -115,6 +126,7 @@ static menu_key_t menu_app_map_key(uint8_t raw_key)
     }
 }
 
+/* 把任意流量单位统一换算成 m^3/s，便于界面内部做统一处理。 */
 static double menu_app_rate_to_m3ps(double rate_value, RateUnitType unit)
 {
     switch (unit)
@@ -140,6 +152,7 @@ static double menu_app_rate_to_m3ps(double rate_value, RateUnitType unit)
     }
 }
 
+/* 读取当前瞬时流量，并统一转换为测量页显示所用的 m3/h。 */
 static double menu_app_get_instant_flow_m3ph(void)
 {
     double flow_m3ps = menu_app_rate_to_m3ps(g_algo_out.flow_rate_instant, g_algo_out.flow_rate_unit);
@@ -147,6 +160,7 @@ static double menu_app_get_instant_flow_m3ph(void)
     return convert_rate_from_m3ps(flow_m3ps, RATE_UNIT_M3_P_H);
 }
 
+/* 计算圆弧表盘的满量程，当前使用报警上限流量作为视觉满量程。 */
 static double menu_app_get_arc_full_scale_m3ph(void)
 {
     double full_scale_m3ps = menu_app_rate_to_m3ps(g_parameters.alarm_upper_rate_range, g_parameters.rate_unit_type);
@@ -160,6 +174,7 @@ static double menu_app_get_arc_full_scale_m3ph(void)
     return full_scale_m3ph;
 }
 
+/* 根据 `display_sensitivity` 计算测量页刷新周期，并做上下限保护。 */
 static uint32_t menu_app_get_measure_refresh_period_ms(void)
 {
     uint32_t refresh_hz = g_parameters.display_sensitivity;
@@ -183,6 +198,13 @@ static uint32_t menu_app_get_measure_refresh_period_ms(void)
     return period_ms;
 }
 
+/*
+ * 采集 GUI 任务运行时状态。
+ * 主要用于观察：
+ * 1. GUI 任务栈余量
+ * 2. RTOS heap 余量
+ * 3. LVGL 内存碎片与最大空闲块
+ */
 static void menu_app_monitor_runtime(void)
 {
     lv_mem_monitor_t mem_mon;
@@ -238,6 +260,7 @@ static void menu_app_monitor_runtime(void)
     }
 }
 
+/* 统一隐藏所有页面，随后再只显示目标页面。 */
 static void menu_app_hide_all(menu_app_ctx_t *app)
 {
     menu_measure_page_set_visible(&app->measure_page, false);
@@ -245,6 +268,10 @@ static void menu_app_hide_all(menu_app_ctx_t *app)
     menu_setting_page_set_visible(&app->setting_page, false);
 }
 
+/*
+ * 渲染测量页。
+ * 它会从全局算法输出中读取 SQ、瞬时流量和累计流量，再换算成测量页需要的圆弧值和文本。
+ */
 static void menu_app_render_measure(menu_app_ctx_t *app)
 {
     double sq_value = g_algo_out.sq_value;
@@ -282,11 +309,13 @@ static void menu_app_render_measure(menu_app_ctx_t *app)
     g_menu_app_diag_snapshot.current_screen = (uint32_t)app->current_screen;
 }
 
+/* 刷新菜单列表页。 */
 static void menu_app_render_list(menu_app_ctx_t *app)
 {
     menu_list_page_render(&app->list_page, &app->nav_state);
 }
 
+/* 刷新设置页。 */
 static void menu_app_render_setting(menu_app_ctx_t *app)
 {
     menu_setting_view_t view;
@@ -307,6 +336,7 @@ static void menu_app_render_setting(menu_app_ctx_t *app)
     }
 }
 
+/* 切换到测量页。 */
 static void menu_app_show_measure(menu_app_ctx_t *app)
 {
     app->current_screen = MENU_SCREEN_MEASURE;
@@ -314,6 +344,7 @@ static void menu_app_show_measure(menu_app_ctx_t *app)
     menu_measure_page_set_visible(&app->measure_page, true);
 }
 
+/* 切换到列表页。 */
 static void menu_app_show_list(menu_app_ctx_t *app)
 {
     app->current_screen = MENU_SCREEN_LIST;
@@ -321,6 +352,7 @@ static void menu_app_show_list(menu_app_ctx_t *app)
     menu_list_page_set_visible(&app->list_page, true);
 }
 
+/* 切换到设置页。 */
 static void menu_app_show_setting(menu_app_ctx_t *app)
 {
     app->current_screen = MENU_SCREEN_SETTING;
@@ -328,6 +360,7 @@ static void menu_app_show_setting(menu_app_ctx_t *app)
     menu_setting_page_set_visible(&app->setting_page, true);
 }
 
+/* 打开菜单根页。 */
 static void menu_app_open_root(menu_app_ctx_t *app)
 {
     menu_nav_reset_root(&app->nav_state, menu_data_get_root_page());
@@ -336,6 +369,7 @@ static void menu_app_open_root(menu_app_ctx_t *app)
     menu_app_render_list(app);
 }
 
+/* 从菜单或设置页回到测量页。 */
 static void menu_app_back_to_measure(menu_app_ctx_t *app)
 {
     menu_nav_reset_root(&app->nav_state, menu_data_get_root_page());
@@ -344,6 +378,7 @@ static void menu_app_back_to_measure(menu_app_ctx_t *app)
     menu_app_render_measure(app);
 }
 
+/* 打开某一项设置并初始化本次编辑会话。 */
 static void menu_app_open_setting(menu_app_ctx_t *app, const menu_setting_desc_t *setting)
 {
     app->active_setting = setting;
@@ -352,6 +387,7 @@ static void menu_app_open_setting(menu_app_ctx_t *app, const menu_setting_desc_t
     menu_app_render_setting(app);
 }
 
+/* 返回上一级菜单。 */
 static void menu_app_back_to_parent(menu_app_ctx_t *app)
 {
     if (menu_nav_pop(&app->nav_state))
@@ -364,6 +400,7 @@ static void menu_app_back_to_parent(menu_app_ctx_t *app)
     menu_app_render_list(app);
 }
 
+/* 从设置页退出并回到列表页。 */
 static void menu_app_back_from_setting(menu_app_ctx_t *app)
 {
     menu_nav_reset_current_selection(&app->nav_state);
@@ -373,6 +410,7 @@ static void menu_app_back_from_setting(menu_app_ctx_t *app)
     menu_app_render_list(app);
 }
 
+/* 处理列表页中的“确认/进入”动作。 */
 static void menu_app_handle_ok(menu_app_ctx_t *app)
 {
     menu_entry_type_t entry_type = MENU_ENTRY_MEASURE;
@@ -404,6 +442,13 @@ static void menu_app_handle_ok(menu_app_ctx_t *app)
     }
 }
 
+/*
+ * 菜单按键分发函数。
+ * 它会根据当前页面把同一个按键解释成不同动作，例如：
+ * - 在列表页中，上下键表示移动选中项
+ * - 在设置页中，上下键表示修改当前参数
+ * - 在测量页中，返回键表示进入主菜单
+ */
 static void menu_app_handle_key(menu_app_ctx_t *app, menu_key_t key)
 {
     g_menu_app_diag_snapshot.last_key = (uint32_t)key;
@@ -500,6 +545,7 @@ static void menu_app_handle_key(menu_app_ctx_t *app, menu_key_t key)
     }
 }
 
+/* 创建菜单应用上下文和各页面控件，系统启动时调用一次。 */
 static void menu_app_create(menu_app_ctx_t *app)
 {
     lv_obj_t *scr = lv_scr_act();
@@ -525,6 +571,14 @@ static void menu_app_create(menu_app_ctx_t *app)
     menu_app_render_measure(app);
 }
 
+/*
+ * LVGL 定时回调。
+ * 它相当于 GUI 的“业务轮询心跳”，主要负责：
+ * 1. 读取按键
+ * 2. 分发页面逻辑
+ * 3. 控制测量页刷新频率
+ * 4. 采集 GUI 诊断信息
+ */
 static void menu_app_tick_cb(lv_timer_t *timer)
 {
     menu_key_t key;
@@ -554,6 +608,11 @@ static void menu_app_tick_cb(lv_timer_t *timer)
     g_menu_app_diag_snapshot.menu_tick_exit_count++;
 }
 
+/*
+ * GUI 主任务。
+ * 本任务完成 LVGL 初始化后进入无限循环，持续调用 `lv_timer_handler()`，
+ * 也就是整个图形界面的核心调度入口。
+ */
 void menu_app_task(void *p)
 {
     (void)p;

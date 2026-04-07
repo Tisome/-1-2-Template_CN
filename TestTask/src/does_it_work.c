@@ -1,3 +1,13 @@
+/*
+ * 测试任务总装配文件。
+ * 本文件负责创建当前测试固件会启动的 FreeRTOS 任务，并决定哪些子系统参与联调：
+ * 1. Modbus 解析与命令执行
+ * 2. LVGL 界面任务
+ * 3. 按键任务
+ * 4. 假数据与算法处理链路
+ *
+ * 若后续切换到真实 SPI 或 EEPROM 联调，可优先从本文件调整任务开关、优先级和栈大小。
+ */
 #include "does_it_work.h"
 
 #include "bsp_key.h"
@@ -43,6 +53,7 @@
 TaskHandle_t task_spi_rx_handler = NULL;
 TaskHandle_t task_modbus_handler = NULL;
 
+/* 按当前测试配置创建任务，并最终启动调度器。 */
 static int task_test(void)
 {
     BaseType_t ret;
@@ -181,16 +192,25 @@ static int task_test(void)
     }
 }
 
+/* 返回真实 SPI 接收任务句柄，供中断或其他模块在需要时唤醒该任务。 */
 TaskHandle_t get_spi_rx_task_handle(void)
 {
     return task_spi_rx_handler;
 }
 
+/* 返回真实 SPI 接收任务句柄，供中断或其他模块在需要时唤醒该任务。 */
 TaskHandle_t get_modbus_task_handle(void)
 {
     return task_modbus_handler;
 }
 
+/*
+ * 系统测试入口。
+ * 调用顺序是：
+ * 1. 初始化 FreeRTOS 共享资源
+ * 2. 初始化参数与 Modbus 映射
+ * 3. 创建并启动测试任务
+ */
 void does_it_work(void)
 {
     freertos_resources_init();

@@ -1,8 +1,14 @@
+/*
+ * 设置页后端适配文件。
+ * 该文件负责把 GUI 中的设置项 ID 映射到参数子系统接口，
+ * 让设置页只关心“有哪些项、怎么显示”，而具体值从哪里读写由这里统一处理。
+ */
 #include "menu_setting_backend.h"
 
 #include <stdio.h>
 #include <string.h>
 
+/* 在选项列表中按值查找当前选中的选项描述。 */
 static const menu_setting_option_t *menu_setting_backend_find_option(const menu_setting_desc_t *setting,
                                                                      uint32_t value)
 {
@@ -26,6 +32,7 @@ static const menu_setting_option_t *menu_setting_backend_find_option(const menu_
     return NULL;
 }
 
+/* 安全复制详情文本，避免页面层直接处理字符串长度问题。 */
 static void menu_setting_backend_copy_detail(menu_setting_view_t *view,
                                              const char *detail_text)
 {
@@ -43,6 +50,7 @@ static void menu_setting_backend_copy_detail(menu_setting_view_t *view,
     (void)snprintf(view->detail_text, sizeof(view->detail_text), "%s", detail_text);
 }
 
+/* 读取数值型设置项当前值，供设置页显示或编辑时使用。 */
 bool menu_setting_backend_get_numeric_value(menu_setting_id_t id, double *value)
 {
     switch (id)
@@ -67,6 +75,7 @@ bool menu_setting_backend_get_numeric_value(menu_setting_id_t id, double *value)
     }
 }
 
+/* 读取枚举/选项型设置项当前值。 */
 bool menu_setting_backend_get_option_value(menu_setting_id_t id, uint32_t *value)
 {
     switch (id)
@@ -88,6 +97,7 @@ bool menu_setting_backend_get_option_value(menu_setting_id_t id, uint32_t *value
     }
 }
 
+/* 提交一个数值型设置项到参数系统。 */
 parameter_apply_status_t menu_setting_backend_commit_numeric(menu_setting_id_t id, double value)
 {
     switch (id)
@@ -109,6 +119,7 @@ parameter_apply_status_t menu_setting_backend_commit_numeric(menu_setting_id_t i
     }
 }
 
+/* 提交一个选项型设置项到参数系统。 */
 parameter_apply_status_t menu_setting_backend_commit_option(menu_setting_id_t id, uint32_t value)
 {
     switch (id)
@@ -130,6 +141,10 @@ parameter_apply_status_t menu_setting_backend_commit_option(menu_setting_id_t id
     }
 }
 
+/*
+ * 让选项型设置项向上或向下切换一步。
+ * 本函数负责把“步进操作”转换为新的选项值并提交，主要给设置页按键操作使用。
+ */
 parameter_apply_status_t menu_setting_backend_step_option(const menu_setting_desc_t *setting, int8_t step)
 {
     uint32_t current_value = 0U;
@@ -179,6 +194,7 @@ parameter_apply_status_t menu_setting_backend_step_option(const menu_setting_des
                                               setting->option.options[next_index].value);
 }
 
+/* 执行动作型设置项，例如手动零漂学习。 */
 parameter_apply_status_t menu_setting_backend_execute_action(menu_setting_id_t id)
 {
     switch (id)
@@ -191,6 +207,10 @@ parameter_apply_status_t menu_setting_backend_execute_action(menu_setting_id_t i
     }
 }
 
+/*
+ * 根据设置项描述和当前参数构造页面显示视图。
+ * 这一步会把参数值转成字符串、单位和提示文本，是设置页渲染前最重要的适配函数。
+ */
 bool menu_setting_backend_build_view(const menu_setting_desc_t *setting,
                                      menu_setting_view_t *view)
 {

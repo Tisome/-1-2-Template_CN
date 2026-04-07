@@ -1,5 +1,11 @@
+/*
+ * 菜单导航状态机文件。
+ * 它只处理“当前在哪一页、选中了哪一项、是否进入子菜单、是否返回上一层”，
+ * 不直接操作 LVGL 控件，是界面渲染层和菜单数据层之间的纯逻辑层。
+ */
 #include "menu_nav.h"
 
+/* 解析页面每页显示项数，未配置时使用默认可见数量。 */
 static uint16_t menu_nav_resolve_page_size(const menu_page_t *page)
 {
     if ((page == NULL) || (page->items_per_page == 0U))
@@ -10,6 +16,7 @@ static uint16_t menu_nav_resolve_page_size(const menu_page_t *page)
     return page->items_per_page;
 }
 
+/* 解析页面默认选中项，并保证结果不会越界。 */
 static uint16_t menu_nav_resolve_default_index(const menu_page_t *page)
 {
     uint16_t index = 0U;
@@ -28,6 +35,7 @@ static uint16_t menu_nav_resolve_default_index(const menu_page_t *page)
     return index;
 }
 
+/* 用指定页面填充一个导航栈帧。 */
 static void menu_nav_set_frame(menu_nav_frame_t *frame, const menu_page_t *page)
 {
     if (frame == NULL)
@@ -39,6 +47,7 @@ static void menu_nav_set_frame(menu_nav_frame_t *frame, const menu_page_t *page)
     frame->selected_index = menu_nav_resolve_default_index(page);
 }
 
+/* 获取当前可写导航帧。 */
 static menu_nav_frame_t *menu_nav_get_current_frame(menu_nav_state_t *state)
 {
     if ((state == NULL) || (state->depth == 0U))
@@ -49,6 +58,7 @@ static menu_nav_frame_t *menu_nav_get_current_frame(menu_nav_state_t *state)
     return &state->frames[state->depth - 1U];
 }
 
+/* 获取当前只读导航帧。 */
 static const menu_nav_frame_t *menu_nav_get_current_frame_const(const menu_nav_state_t *state)
 {
     if ((state == NULL) || (state->depth == 0U))
@@ -59,6 +69,7 @@ static const menu_nav_frame_t *menu_nav_get_current_frame_const(const menu_nav_s
     return &state->frames[state->depth - 1U];
 }
 
+/* 初始化导航状态，并把根页面压入导航栈。 */
 void menu_nav_init(menu_nav_state_t *state, const menu_page_t *root_page)
 {
     if (state == NULL)
@@ -75,11 +86,13 @@ void menu_nav_init(menu_nav_state_t *state, const menu_page_t *root_page)
     }
 }
 
+/* 将导航状态重置回根页面。 */
 void menu_nav_reset_root(menu_nav_state_t *state, const menu_page_t *root_page)
 {
     menu_nav_init(state, root_page);
 }
 
+/* 恢复当前页面的默认选中项。 */
 void menu_nav_reset_current_selection(menu_nav_state_t *state)
 {
     menu_nav_frame_t *frame = menu_nav_get_current_frame(state);
@@ -92,6 +105,7 @@ void menu_nav_reset_current_selection(menu_nav_state_t *state)
     frame->selected_index = menu_nav_resolve_default_index(frame->page);
 }
 
+/* 在当前页面内向上移动选中项。 */
 bool menu_nav_move_up(menu_nav_state_t *state)
 {
     menu_nav_frame_t *frame = menu_nav_get_current_frame(state);
@@ -105,6 +119,7 @@ bool menu_nav_move_up(menu_nav_state_t *state)
     return true;
 }
 
+/* 在当前页面内向下移动选中项。 */
 bool menu_nav_move_down(menu_nav_state_t *state)
 {
     menu_nav_frame_t *frame = menu_nav_get_current_frame(state);
@@ -123,11 +138,13 @@ bool menu_nav_move_down(menu_nav_state_t *state)
     return true;
 }
 
+/* 判断当前是否还能返回上一层菜单。 */
 bool menu_nav_can_pop(const menu_nav_state_t *state)
 {
     return (state != NULL) && (state->depth > 1U);
 }
 
+/* 从当前页面返回上一层页面。 */
 bool menu_nav_pop(menu_nav_state_t *state)
 {
     if (!menu_nav_can_pop(state))
@@ -139,6 +156,11 @@ bool menu_nav_pop(menu_nav_state_t *state)
     return true;
 }
 
+/*
+ * 进入当前选中项。
+ * 如果是子菜单，会把子页面压入导航栈；
+ * 如果是设置项或测量页，则把对应元数据返回给上层进一步处理。
+ */
 bool menu_nav_enter(menu_nav_state_t *state,
                     menu_entry_type_t *entry_type,
                     const menu_page_t **submenu,
@@ -188,6 +210,7 @@ bool menu_nav_enter(menu_nav_state_t *state,
     return true;
 }
 
+/* 获取当前所在页面。 */
 const menu_page_t *menu_nav_get_current_page(const menu_nav_state_t *state)
 {
     const menu_nav_frame_t *frame = menu_nav_get_current_frame_const(state);
@@ -200,6 +223,7 @@ const menu_page_t *menu_nav_get_current_page(const menu_nav_state_t *state)
     return frame->page;
 }
 
+/* 获取当前选中的菜单项。 */
 const menu_item_t *menu_nav_get_selected_item(const menu_nav_state_t *state)
 {
     const menu_nav_frame_t *frame = menu_nav_get_current_frame_const(state);
@@ -217,6 +241,7 @@ const menu_item_t *menu_nav_get_selected_item(const menu_nav_state_t *state)
     return &frame->page->items[frame->selected_index];
 }
 
+/* 获取当前选中项在本页中的索引。 */
 uint16_t menu_nav_get_selected_index(const menu_nav_state_t *state)
 {
     const menu_nav_frame_t *frame = menu_nav_get_current_frame_const(state);
@@ -229,6 +254,7 @@ uint16_t menu_nav_get_selected_index(const menu_nav_state_t *state)
     return frame->selected_index;
 }
 
+/* 计算当前页在整张菜单表中的起始索引。 */
 uint16_t menu_nav_get_page_start(const menu_nav_state_t *state)
 {
     const menu_nav_frame_t *frame = menu_nav_get_current_frame_const(state);
@@ -243,6 +269,7 @@ uint16_t menu_nav_get_page_start(const menu_nav_state_t *state)
     return (uint16_t)((frame->selected_index / page_size) * page_size);
 }
 
+/* 计算当前页面总页数。 */
 uint16_t menu_nav_get_total_pages(const menu_nav_state_t *state)
 {
     const menu_page_t *page = menu_nav_get_current_page(state);
@@ -257,6 +284,7 @@ uint16_t menu_nav_get_total_pages(const menu_nav_state_t *state)
     return (uint16_t)((page->item_count + page_size - 1U) / page_size);
 }
 
+/* 计算当前选中项位于第几页，页号从 1 开始。 */
 uint16_t menu_nav_get_current_page_index(const menu_nav_state_t *state)
 {
     const menu_nav_frame_t *frame = menu_nav_get_current_frame_const(state);
@@ -271,6 +299,7 @@ uint16_t menu_nav_get_current_page_index(const menu_nav_state_t *state)
     return (uint16_t)(frame->selected_index / page_size + 1U);
 }
 
+/* 取出当前页需要显示的菜单项列表，供列表页批量渲染。 */
 uint16_t menu_nav_get_visible_items(const menu_nav_state_t *state,
                                     const menu_item_t **items,
                                     uint16_t max_items,

@@ -1,3 +1,12 @@
+/*
+ * 假数据底层构造文件。
+ * 与 `task_fake_data.c` 不同，本文件不直接跑任务，而是提供：
+ * 1. 假数据配置管理
+ * 2. 目标波形生成
+ * 3. 原始数据包打包
+ *
+ * 它相当于“测试数据源的算法层”，上层任务只负责定时调用。
+ */
 #include "fake_data.h"
 #include "algorithm_flow.h"
 
@@ -28,6 +37,7 @@ static volatile uint8_t g_fake_data_cfg_refresh_pending = 0U;
 
 /* ========================= 基础工具函数 ========================= */
 
+/* 生成一个随时间变化的正弦目标值，用于模拟周期性流速/流量变化。 */
 static float fake_sine_wave(float t_s, const fake_data_cfg_t *cfg)
 {
     float mid = 0.5f * (cfg->lower + cfg->upper);
@@ -39,6 +49,7 @@ static float fake_sine_wave(float t_s, const fake_data_cfg_t *cfg)
 }
 
 #if FAKE_DATA_MODE == FAKE_DATA_MODE_FLOW
+/* 根据内径计算横截面积，仅在按流量模式生成假数据时使用。 */
 static double pipe_area_m2(const Pipe_Parameters_t *para)
 {
     if (para == NULL || para->inner_diameter <= 0.0)
@@ -52,6 +63,7 @@ static double pipe_area_m2(const Pipe_Parameters_t *para)
 }
 
 /* L/min -> m^3/s */
+/* 将 L/min 转换为 m^3/s。 */
 static double lpm_to_m3ps(double q_lpm)
 {
     return q_lpm * 1e-3 / 60.0;
@@ -59,12 +71,14 @@ static double lpm_to_m3ps(double q_lpm)
 
 #endif
 
+/* 将 64 位整数截取为 48 位，准备写入模拟原始包。 */
 static uint64_t pack_s48(int64_t v)
 {
     return (uint64_t)v & 0xFFFFFFFFFFFFULL;
 }
 
 // big endian
+/* 以大端格式写入一个 48 位有符号值。 */
 static void put_be48(uint8_t *p, int64_t s48)
 {
     uint64_t u = pack_s48(s48);
@@ -94,6 +108,7 @@ static void make_parabola_3pts(double delta, int64_t *y1, int64_t *y2, int64_t *
 
 /* ========================= 对外接口 ========================= */
 
+/* 设置假数据波形范围和周期。 */
 void fake_data_set_cfg(float lower, float upper, float period_s)
 {
     g_fake_data_cfg.lower = lower;
@@ -101,6 +116,7 @@ void fake_data_set_cfg(float lower, float upper, float period_s)
     g_fake_data_cfg.period_s = period_s;
 }
 
+/* 读取当前假数据配置。 */
 void fake_data_get_cfg(fake_data_cfg_t *cfg)
 {
     if (cfg == NULL)
@@ -111,11 +127,13 @@ void fake_data_get_cfg(fake_data_cfg_t *cfg)
     *cfg = g_fake_data_cfg;
 }
 
+/* 由外部模块请求刷新假数据配置，通常在参数变化后调用。 */
 void fake_data_request_cfg_refresh(void)
 {
     g_fake_data_cfg_refresh_pending = 1U;
 }
 
+/* 取走一次“需要刷新配置”的标志，供任务侧决定是否重新生成范围。 */
 bool fake_data_consume_cfg_refresh_request(void)
 {
     if (g_fake_data_cfg_refresh_pending == 0U)
@@ -127,6 +145,7 @@ bool fake_data_consume_cfg_refresh_request(void)
     return true;
 }
 
+/* 根据当前时间点计算目标流速，统一输出为 m/s。 */
 float fake_data_get_target_speed_mps(float t_s, const Pipe_Parameters_t *para)
 {
     float signal = fake_sine_wave(t_s, &g_fake_data_cfg);
@@ -151,6 +170,11 @@ float fake_data_get_target_speed_mps(float t_s, const Pipe_Parameters_t *para)
 #endif
 }
 
+/*
+ * 生成一帧模拟原始包。
+ * 本函数会先根据当前目标流速反推 dt，再把 idx、三点回波数据封装成与真实采集一致的原始格式，
+ * 因此上层算法无需区分“是真实数据还是假数据”。
+ */
 void fake_data_make_packet(rufx_raw_packet_t *raw,
                            float t_s,
                            const Pipe_Parameters_t *para)

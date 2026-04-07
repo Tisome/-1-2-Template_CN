@@ -1,3 +1,8 @@
+/*
+ * 按键子系统文件。
+ * 本文件把 GPIO 中断边沿转换为“按下/释放”事件，再由任务侧完成去抖、
+ * 短按/长按判定，最后以统一键值输出给 GUI 菜单系统使用。
+ */
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "task.h"
@@ -15,6 +20,11 @@ TaskHandle_t task_key_handle = NULL;
 QueueHandle_t key_queue = NULL;
 QueueHandle_t key_inner_queue = NULL;
 
+/*
+ * 按键任务。
+ * 中断只负责把边沿事件塞进 `key_inner_queue`，真正的去抖和长短按判断在这里完成，
+ * 最终结果再投递到 `key_queue`，供 `key_scan()` 或 GUI 主循环读取。
+ */
 void task_key(void *parameter)
 {
     key_runtime_state_t key_states[KEY_NUMS] = {0};
@@ -147,7 +157,11 @@ void task_key(void *parameter)
     }
 }
 
-// USE ISR FUNCTION
+/*
+ * GPIO 外部中断回调。
+ * 该函数只做轻量工作：识别是哪个按键、记录触发时刻、推送边沿事件。
+ * 复杂逻辑统一留给 `task_key()`，避免在中断里做耗时处理。
+ */
 void key_gpio_exti_handler(uint16_t GPIO_Pin)
 {
     static key_press_event_t key_events[KEY_NUMS][2];
@@ -225,6 +239,7 @@ void key_gpio_exti_handler(uint16_t GPIO_Pin)
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
+/* 提供给上层的按键扫描接口，支持阻塞等待指定超时时间。 */
 uint8_t key_scan(uint8_t timeout_ms)
 {
     uint8_t key_value = KEY_NONE;

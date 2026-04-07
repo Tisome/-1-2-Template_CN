@@ -1,3 +1,14 @@
+/*
+ * 参数与全局状态管理文件。
+ * 本文件负责维护系统运行时最关键的共享数据：
+ * 1. 参数结构 `g_parameters`
+ * 2. 算法状态 `g_algo_state`
+ * 3. 算法输出 `g_algo_out`
+ * 4. 报警状态 `g_alarm`
+ *
+ * 同时，它还提供参数校验、参数提交、运行时动作执行以及 EEPROM 读写封装，
+ * 是 GUI、Modbus、算法和存储子系统共同依赖的“中心数据层”。
+ */
 #include "data.h"
 #include "algorithm_flow.h"
 #include "at24cxx_handler.h"
@@ -52,6 +63,7 @@ Pipe_algo_out_data_t g_algo_out =
 
 ALARM_TYPE g_alarm = ALARM_OK;
 
+/* 返回默认参数常量表，供初始化和“恢复默认参数”共用。 */
 static const Pipe_Parameters_t *get_default_pipe_parameters_ptr(void)
 {
     static const Pipe_Parameters_t s_default_pipe_parameters =
@@ -91,6 +103,7 @@ static const Pipe_Parameters_t *get_default_pipe_parameters_ptr(void)
     return &s_default_pipe_parameters;
 }
 
+/* 按值拷贝默认参数，适合需要独立副本的场景。 */
 static Pipe_Parameters_t make_default_pipe_parameters(void)
 {
     return *get_default_pipe_parameters_ptr();
@@ -223,6 +236,13 @@ static bool parameter_configuration_equal(const Pipe_Parameters_t *lhs,
            (lhs->rate_unit_type == rhs->rate_unit_type);
 }
 
+/*
+ * 在参数变化后同步外部可见状态。
+ * 目前会同步：
+ * 1. Modbus 保持寄存器
+ * 2. Modbus 输入寄存器
+ * 3. 假数据配置刷新请求
+ */
 static void parameter_sync_external_state(void)
 {
     update_holding_registers_from_parameters();
@@ -245,6 +265,7 @@ static parameter_apply_status_t parameter_status_from_eeprom(e2prom_status_t sta
     }
 }
 
+/* 判断当前板型是否支持掉电保存。RCT6 返回 false，CCT6 返回 true。 */
 bool parameter_storage_is_persistent(void)
 {
 #if USE_E2PROM
@@ -259,6 +280,11 @@ static uint32_t parameter_saved_flag_for_board(void)
     return parameter_storage_is_persistent() ? 1U : 0U;
 }
 
+/*
+ * 尝试保存当前参数。
+ * 对无 EEPROM 的板卡，本函数会直接返回成功，但 `is_saved` 会保持为 0，
+ * 这样既能让运行时修改生效，又不会误导上层认为参数已经掉电保存。
+ */
 static parameter_apply_status_t parameter_try_save_current_state(Pipe_Parameters_t *para)
 {
     e2prom_status_t save_status = E2PROM_OK;
@@ -411,6 +437,13 @@ const char *volume_unit_to_str(VolumeUnitType unit)
 
 /* ========================= 参数初始化 ========================= */
 
+/*
+ * 参数初始化入口。
+ * 用在系统启动阶段，负责完成：
+ * 1. 默认参数或 EEPROM 参数加载
+ * 2. 算法状态与输出复位
+ * 3. Modbus / 假数据等外部映射同步
+ */
 void parameter_init(void)
 {
     Pipe_Parameters_t default_pipe_parameters = make_default_pipe_parameters();
@@ -453,6 +486,7 @@ void parameter_reset_to_default(void)
     g_parameters = make_default_pipe_parameters();
 }
 
+/* 对一组参数做完整合法性检查，供 GUI / Modbus / 存储加载统一复用。 */
 bool parameter_validate(const Pipe_Parameters_t *para)
 {
     if (para == NULL)
@@ -534,6 +568,7 @@ bool parameter_validate(const Pipe_Parameters_t *para)
     return true;
 }
 
+/* 在关键参数变化后复位测量状态，避免旧窗口数据污染新配置下的结果。 */
 void parameter_reset_measurement_state(void)
 {
     g_algo_state = make_default_algo_state();
@@ -549,6 +584,7 @@ void parameter_reset_measurement_state(void)
     update_input_registers();
 }
 
+/* 按字段读取 double 类型参数，主要供 GUI 设置页和 Modbus 逻辑调用。 */
 bool parameter_get_double(parameter_field_id_t field_id, double *value)
 {
     if (value == NULL)
@@ -599,6 +635,7 @@ bool parameter_get_double(parameter_field_id_t field_id, double *value)
     }
 }
 
+/* 按字段读取整型/枚举参数，主要供 GUI 设置页和 Modbus 逻辑调用。 */
 bool parameter_get_u32(parameter_field_id_t field_id, uint32_t *value)
 {
     if (value == NULL)
@@ -641,6 +678,18 @@ bool parameter_get_u32(parameter_field_id_t field_id, uint32_t *value)
     }
 }
 
+/*
+ * 提交一组候选参数，是参数子系统最核心的入口。
+ * 运行逻辑如下：
+ * 1. 先复制并校验候选参数；
+ * 2. 判断这次改动是否需要复位测量状态；
+ * 3. 将参数写入 `g_parameters`；
+ * 4. 根据板型决定是否写 EEPROM；
+ * 5. 若保存失败则回滚旧参数；
+ * 6. 最后同步 Modbus/假数据等外部状态。
+ *
+ * GUI 设置提交、Modbus 写寄存器、恢复默认参数最终都会汇聚到这里。
+ */
 parameter_apply_status_t parameter_commit(const Pipe_Parameters_t *candidate)
 {
     Pipe_Parameters_t old_parameters = g_parameters;
@@ -691,6 +740,7 @@ parameter_apply_status_t parameter_commit(const Pipe_Parameters_t *candidate)
     return PARAMETER_APPLY_OK;
 }
 
+/* 对当前 `g_parameters` 执行一次保存动作，主要用于保存命令和软复位前处理。 */
 parameter_apply_status_t parameter_save_current(void)
 {
     parameter_apply_status_t apply_status = PARAMETER_APPLY_OK;
@@ -705,6 +755,7 @@ parameter_apply_status_t parameter_save_current(void)
     return apply_status;
 }
 
+/* 修改一个 double 字段并立即走统一提交流程。 */
 parameter_apply_status_t parameter_set_double(parameter_field_id_t field_id, double value)
 {
     Pipe_Parameters_t candidate = g_parameters;
@@ -754,6 +805,7 @@ parameter_apply_status_t parameter_set_double(parameter_field_id_t field_id, dou
     return parameter_commit(&candidate);
 }
 
+/* 修改一个整型/枚举字段并立即走统一提交流程。 */
 parameter_apply_status_t parameter_set_u32(parameter_field_id_t field_id, uint32_t value)
 {
     Pipe_Parameters_t candidate = g_parameters;
@@ -795,6 +847,11 @@ parameter_apply_status_t parameter_set_u32(parameter_field_id_t field_id, uint32
     return parameter_commit(&candidate);
 }
 
+/*
+ * 执行参数相关动作命令。
+ * 这里处理的不是“赋值型修改”，而是清零累计量、零漂学习、恢复默认等动作型命令，
+ * GUI 与 Modbus 线圈命令都会用到它。
+ */
 parameter_apply_status_t parameter_execute_action(parameter_action_t action)
 {
     switch (action)
@@ -828,6 +885,7 @@ parameter_apply_status_t parameter_execute_action(parameter_action_t action)
 
 /* ========================= EEPROM 参数接口 ========================= */
 
+/* 参数写 EEPROM 封装。当前只封装底层地址和资源开关，不负责业务校验。 */
 e2prom_status_t SaveParameters(Pipe_Parameters_t *para)
 {
     if (para == NULL)
@@ -846,6 +904,7 @@ e2prom_status_t SaveParameters(Pipe_Parameters_t *para)
 #endif
 }
 
+/* 参数读 EEPROM 封装。 */
 e2prom_status_t LoadParameters(Pipe_Parameters_t *para)
 {
     if (para == NULL)

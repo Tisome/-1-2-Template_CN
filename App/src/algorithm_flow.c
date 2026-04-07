@@ -8,6 +8,7 @@
 #include "elog.h"
 
 // 鏇存柊 3 绉掔獥鍙ｅ潖鏁版嵁缁熻锛堢幆褰㈢紦鍐诧級
+/* 更新 SQ 坏点统计窗口，窗口长度由 `SQ_WINDOW_GROUPS` 决定。 */
 void sq_window_update(Pipe_algo_state_t *s, bool is_bad)
 {
     if (s->sq_count < SQ_WINDOW_GROUPS)
@@ -27,6 +28,7 @@ void sq_window_update(Pipe_algo_state_t *s, bool is_bad)
 }
 
 // 鑾峰彇 SQ锛堝ソ鏁版嵁鐧惧垎姣旓級
+/* 计算当前 SQ 百分比，本质上是“好数据比例”。 */
 double sq_get_percent(const Pipe_algo_state_t *s)
 {
     uint16_t denom = (s->sq_count == 0U) ? 1U : s->sq_count;
@@ -35,6 +37,7 @@ double sq_get_percent(const Pipe_algo_state_t *s)
     return 100.0 * (1.0 - (bad / total));
 }
 
+/* 估算声波穿过管壁带来的附加传播时间，返回单位为 ns。 */
 double calc_t_wall_ns(const Pipe_Parameters_t *para)
 {
     double wall_speed_mps = 0.0; // 绠″涓０閫燂紝鍗曚綅 m/s
@@ -104,6 +107,10 @@ double calc_t_wall_ns(const Pipe_Parameters_t *para)
  * - L1 = pipe_dn : mm
  * - 杈撳嚭 v : m/s
  */
+/*
+ * 根据时延差计算原始流速，输出单位为 m/s。
+ * 主要被 `algorithm_process_group()` 调用，是算法链中最核心的物理换算步骤之一。
+ */
 double vel_calc_from_dt(const Pipe_Parameters_t *para,
                         double t1_ns,
                         double t2_ns,
@@ -151,6 +158,13 @@ double vel_calc_from_dt(const Pipe_Parameters_t *para,
  *  - 绐楀彛闀垮害 FLOW_WINDOW_LEN锛?0锛?
  *  - 姣?FLOW_WINDOW_STEP锛?锛夋鏇存柊杈撳嚭涓€娆?
  *  - 杈撳嚭鏃跺绐楀彛鎺掑簭锛屾寜绠辩嚎鍥撅紙IQR锛夊墧闄ょ缇ゅ€硷紝鍐嶆眰骞冲潎
+ */
+/*
+ * 滑动窗口平均与去异常函数。
+ * 它并不是每次调用都输出结果，而是先把新值写入窗口：
+ * 1. 只有窗口填满后才允许输出；
+ * 2. 只有累计到 `FLOW_WINDOW_STEP` 次更新后才做一次统计；
+ * 3. 统计时先排序，再用 IQR 方法剔除离群值，最后求平均。
  */
 bool flow_window_add(Pipe_algo_state_t *state,
                      double *v_raw,
@@ -217,6 +231,7 @@ bool flow_window_add(Pipe_algo_state_t *state,
 }
 
 // 涓€缁村崱灏旀浖婊ゆ尝锛堣緭鍏?measurement锛岃緭鍑哄钩婊戝悗鐨勪及璁″€硷級
+/* 一维卡尔曼滤波，用于进一步平滑流速结果。 */
 double run_kalman_filter(kalman_t *k, double measurement)
 {
     k->p += k->q;
@@ -227,6 +242,11 @@ double run_kalman_filter(kalman_t *k, double measurement)
 }
 
 // 鑷姩 0婕傝ˉ鍋匡細浠呭湪 鈥淪Q楂?+ 杈撳嚭鎺ヨ繎0 + 杩炵画绋冲畾鈥?鏃剁紦鎱㈠涔?offset
+/*
+ * 自动零漂补偿。
+ * 只有在“SQ 足够高、流速接近零、并且连续稳定足够久”时才缓慢更新零点偏移，
+ * 这样可以减小长期零漂，又避免在真正有流量时把偏移学坏。
+ */
 double flow_drift_comp(Pipe_Parameters_t *para,
                        Pipe_algo_state_t *state,
                        double v,
@@ -270,6 +290,7 @@ double flow_drift_comp(Pipe_Parameters_t *para,
     return v - para->zero_offset_speed;
 }
 
+/* 手动零漂学习，通常由 GUI 或 Modbus 命令触发。 */
 bool zero_learn_manual_start(Pipe_Parameters_t *para,
                              Pipe_algo_state_t *state)
 {
@@ -316,6 +337,7 @@ bool zero_learn_manual_start(Pipe_Parameters_t *para,
 }
 
 // 鏈€缁堥檺骞?姝诲尯澶勭悊
+/* 对最终流速做死区和上限处理，同时更新相应流速报警。 */
 double flow_limit(Pipe_Parameters_t *para,
                   double v)
 {
@@ -332,6 +354,7 @@ double flow_limit(Pipe_Parameters_t *para,
     return v;
 }
 
+/* 由管道内径计算横截面积，供流速与体积流量互相换算。 */
 double pipe_area_m2(const Pipe_Parameters_t *para)
 {
     // 濡傛灉 pipe_dn 浠ｈ〃鍐呭緞 mm
@@ -340,6 +363,10 @@ double pipe_area_m2(const Pipe_Parameters_t *para)
     return (double)(M_PI * r * r);
 }
 
+/*
+ * 根据最终流速更新输出结构。
+ * 这里会同时更新瞬时流量、累计流量、SQ 和对外显示单位。
+ */
 void update_flow_outputs(Pipe_Parameters_t *para,
                          Pipe_algo_state_t *state,
                          Pipe_algo_out_data_t *out,
@@ -364,6 +391,7 @@ void update_flow_outputs(Pipe_Parameters_t *para,
     out->flow_total_unit = total_unit;
 }
 
+/* 按当前配置的流量上下限判断流量报警。 */
 void flow_alarm(Pipe_Parameters_t *para,
                 double flow_speed_mps)
 {
@@ -389,3 +417,13 @@ void flow_alarm(Pipe_Parameters_t *para,
 }
 
 
+/*
+ * 流量算法核心函数文件。
+ * 本文件集中放置算法处理中最关键的数学与状态更新逻辑，包括：
+ * 1. SQ 统计窗口
+ * 2. 壁传播时间与流速换算
+ * 3. 滑动窗口去异常平均
+ * 4. 卡尔曼滤波
+ * 5. 自动/手动零漂学习
+ * 6. 流速限幅、流量输出与报警
+ */

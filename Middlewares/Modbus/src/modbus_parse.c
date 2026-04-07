@@ -1,3 +1,9 @@
+/*
+ * Modbus RTU 解析任务文件。
+ * 本文件负责把 USART DMA 环形缓冲区中的完整帧取出，
+ * 再按地址、功能码、数据区、CRC 的顺序逐字节解析，
+ * 最终把完整请求交给 `process_modbus_frame()` 执行。
+ */
 #include "modbus_parse.h"
 #include "modbus_crc.h"
 #include "modbus_frame_process.h"
@@ -18,6 +24,7 @@ extern circular_buf_t *g_modbus_rx_cb;
 static uint8_t s_modbus_rx_frame_buf[MODBUS_RX_BUF_SIZE];
 static modbus_parser_t s_modbus_parser;
 
+/* 判断环形缓冲区里是否已经积累出至少一帧完整 Modbus 数据。 */
 uint8_t modbus_frame_is_ready(circular_buf_t *p_buffer)
 {
     if (p_buffer == NULL)
@@ -28,6 +35,7 @@ uint8_t modbus_frame_is_ready(circular_buf_t *p_buffer)
     return (p_buffer->frame_count > 0U) ? 1U : 0U;
 }
 
+/* 由中断侧记录一帧的起止位置，供任务侧后续读取。 */
 uint8_t modbus_push_frame_from_isr(circular_buf_t *p_buffer, uint16_t frame_start, uint16_t frame_end)
 {
     uint8_t next_w;
@@ -71,6 +79,10 @@ uint8_t modbus_push_frame_from_isr(circular_buf_t *p_buffer, uint16_t frame_star
     return 1U;
 }
 
+/*
+ * 从帧 FIFO 中取出一帧完整数据并复制到线性缓冲区。
+ * 之所以先复制再解析，是为了把 DMA 环形缓冲和协议解析解耦，降低并发复杂度。
+ */
 uint16_t modbus_get_frame(circular_buf_t *p_buffer, uint8_t *buf, uint16_t max_len)
 {
     uint16_t frame_start;
@@ -158,6 +170,7 @@ uint16_t modbus_get_frame(circular_buf_t *p_buffer, uint8_t *buf, uint16_t max_l
 
 // 使用 memset 将 parser 结构体的所有成员初始化为 0
 // 同时设置状态为IDLE
+/* 重置协议解析器，清空历史状态并回到 IDLE。 */
 void reset_modbus_parser(modbus_parser_t *parser)
 {
     if (parser == NULL)
@@ -169,6 +182,17 @@ void reset_modbus_parser(modbus_parser_t *parser)
     parser->state = MODBUS_STATE_IDLE;
 }
 
+/*
+ * Modbus 解析任务主循环。
+ * 它的工作流程是：
+ * 1. 等待 USART 中断通知有完整帧到达；
+ * 2. 从环形缓冲复制一帧到线性缓冲；
+ * 3. 通过状态机逐字节解析地址、功能码、数据区和 CRC；
+ * 4. 校验成功后交给 `process_modbus_frame()` 执行。
+ *
+ * 复杂点在于 `0x10` 写多寄存器命令的数据长度不固定，因此会在读到 byte count 后动态修正
+ * `expected_data_length`，这也是本状态机最容易出错的地方。
+ */
 void task_modbus_parse(void *parameter)
 {
 

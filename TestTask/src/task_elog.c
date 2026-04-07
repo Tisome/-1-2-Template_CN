@@ -1,3 +1,8 @@
+/*
+ * 运行时诊断任务文件。
+ * 本文件周期性采集 FreeRTOS 任务状态、堆剩余量和任务栈高水位，
+ * 主要用于定位“卡死、爆栈、堆不足”这类系统级问题。
+ */
 #define LOG_TAG "task_diag"
 #define LOG_LVL ELOG_LVL_INFO
 
@@ -57,6 +62,7 @@ volatile task_diag_snapshot_t g_task_diag_snapshot;
 static TaskStatus_t s_task_diag_status[TASK_DIAG_MAX_TASKS];
 static uint32_t s_last_warning_flags = 0U;
 
+/* 将任务名安全地复制到诊断结构中，避免越界。 */
 static void task_diag_copy_name(volatile char *dst, uint32_t dst_size, const char *src)
 {
     uint32_t i;
@@ -86,6 +92,7 @@ static void task_diag_copy_name(volatile char *dst, uint32_t dst_size, const cha
     dst[dst_size - 1U] = '\0';
 }
 
+/* 将 FreeRTOS 任务状态枚举转换为单字符，便于在日志中紧凑显示。 */
 static char task_diag_state_to_char(uint32_t state)
 {
     switch ((eTaskState)state)
@@ -111,6 +118,10 @@ static char task_diag_state_to_char(uint32_t state)
     }
 }
 
+/*
+ * 采集一次系统快照并写入全局诊断结构。
+ * Ozone 中可以直接观察 `g_task_diag_snapshot`，快速判断哪个任务最接近爆栈。
+ */
 static void task_diag_collect_snapshot(void)
 {
     HeapStats_t heap_stats;
@@ -200,6 +211,7 @@ static void task_diag_collect_snapshot(void)
     g_task_diag_snapshot.warning_flags = warning_flags;
 }
 
+/* 将本次采集结果输出为一条摘要日志，必要时补充每个任务的详细状态。 */
 static void task_diag_log_snapshot(void)
 {
     uint32_t captured_task_count = g_task_diag_snapshot.captured_task_count;
@@ -245,6 +257,7 @@ static void task_diag_log_snapshot(void)
     s_last_warning_flags = flags;
 }
 
+/* 周期性诊断任务入口。 */
 void task_elog(void *p)
 {
     (void)p;

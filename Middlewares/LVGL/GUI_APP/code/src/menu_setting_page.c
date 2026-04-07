@@ -1,8 +1,14 @@
+/*
+ * 设置页渲染文件。
+ * 该文件负责把设置会话中的值文本、单位、提示语和高亮位置，
+ * 转换成 LVGL 可见控件，属于设置界面的纯显示层。
+ */
 #include "menu_setting_page.h"
 
 #include "menu_strings.h"
 #include <stdio.h>
 
+/* 按字符逐位渲染设置值，并高亮当前选中的编辑位。 */
 static void menu_setting_page_render_value(menu_setting_page_t *page,
                                            const menu_setting_view_t *view)
 {
@@ -68,6 +74,7 @@ static void menu_setting_page_render_value(menu_setting_page_t *page,
     }
 }
 
+/* 创建设置页使用的 LVGL 控件。 */
 void menu_setting_page_create(menu_setting_page_t *page, lv_obj_t *parent)
 {
     uint16_t index;
@@ -141,6 +148,7 @@ void menu_setting_page_create(menu_setting_page_t *page, lv_obj_t *parent)
     lv_obj_align(page->footer_label, LV_ALIGN_BOTTOM_MID, 0, -10);
 }
 
+/* 显示或隐藏整个设置页。 */
 void menu_setting_page_set_visible(menu_setting_page_t *page, bool visible)
 {
     if (page == NULL)
@@ -151,6 +159,7 @@ void menu_setting_page_set_visible(menu_setting_page_t *page, bool visible)
     menu_set_page_hidden(page->root, !visible);
 }
 
+/* 按当前设置描述和会话视图刷新页面内容。 */
 void menu_setting_page_render(menu_setting_page_t *page,
                               const menu_setting_desc_t *setting,
                               const menu_setting_view_t *view)

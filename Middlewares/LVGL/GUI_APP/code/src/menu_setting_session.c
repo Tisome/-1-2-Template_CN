@@ -1,9 +1,21 @@
+/*
+ * 设置会话状态机文件。
+ * 本文件维护“某个设置项正在被编辑”时的临时状态，包括：
+ * 1. 当前值字符串
+ * 2. 当前选中的数字位
+ * 3. 最近一次提交结果
+ * 4. 数值型或选项型设置项的待提交值
+ *
+ * GUI 按键并不直接改全局参数，而是先驱动这里的会话状态，
+ * 最终再由后端统一提交。
+ */
 #include "menu_setting_session.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+/* 计算数值型设置项格式化后需要的总字符宽度。 */
 static uint8_t menu_setting_session_format_width(const menu_setting_desc_t *setting)
 {
     uint8_t width = 0U;
@@ -22,6 +34,7 @@ static uint8_t menu_setting_session_format_width(const menu_setting_desc_t *sett
     return width;
 }
 
+/* 按设置项的小数位要求，将当前数值格式化为可编辑字符串。 */
 static void menu_setting_session_format_numeric(menu_setting_session_t *session)
 {
     uint8_t text_width;
@@ -40,6 +53,7 @@ static void menu_setting_session_format_numeric(menu_setting_session_t *session)
                    session->numeric_value);
 }
 
+/* 更新字符串中每一位数字的位置，便于按键逐位编辑。 */
 static void menu_setting_session_update_digit_positions(menu_setting_session_t *session)
 {
     uint8_t char_index;
@@ -71,6 +85,7 @@ static void menu_setting_session_update_digit_positions(menu_setting_session_t *
     }
 }
 
+/* 将参数应用结果转换成界面可直接显示的状态文本。 */
 static const char *menu_setting_session_status_text(parameter_apply_status_t status)
 {
     switch (status)
@@ -93,6 +108,7 @@ static const char *menu_setting_session_status_text(parameter_apply_status_t sta
     }
 }
 
+/* 根据当前会话状态刷新底部提示语或保存结果提示。 */
 static void menu_setting_session_update_detail(menu_setting_session_t *session)
 {
     const char *status_text = NULL;
@@ -160,6 +176,7 @@ static void menu_setting_session_update_detail(menu_setting_session_t *session)
     }
 }
 
+/* 将当前数值字符串解析回 double，供范围校验和提交使用。 */
 static bool menu_setting_session_parse_numeric(menu_setting_session_t *session, double *value)
 {
     double parsed_value = 0.0;
@@ -180,6 +197,11 @@ static bool menu_setting_session_parse_numeric(menu_setting_session_t *session, 
     return true;
 }
 
+/*
+ * 修改当前选中的数字位。
+ * 该函数会先修改字符串中的目标字符，再尝试重新解析成数值；
+ * 如果解析失败或越界，会回滚修改，保证编辑过程始终处于有效状态。
+ */
 static bool menu_setting_session_change_numeric_digit(menu_setting_session_t *session, int8_t delta)
 {
     char original_char;
@@ -228,6 +250,7 @@ static bool menu_setting_session_change_numeric_digit(menu_setting_session_t *se
     return true;
 }
 
+/* 在选项型设置项中按步进切换候选值。 */
 static bool menu_setting_session_change_option(menu_setting_session_t *session, int8_t step)
 {
     uint16_t option_index;
@@ -274,6 +297,7 @@ static bool menu_setting_session_change_option(menu_setting_session_t *session, 
     return true;
 }
 
+/* 清空整个设置会话状态。 */
 void menu_setting_session_reset(menu_setting_session_t *session)
 {
     if (session == NULL)
@@ -286,6 +310,7 @@ void menu_setting_session_reset(menu_setting_session_t *session)
     session->last_status = PARAMETER_APPLY_OK;
 }
 
+/* 为指定设置项开启新的编辑会话，并装载当前参数值。 */
 bool menu_setting_session_begin(menu_setting_session_t *session, const menu_setting_desc_t *setting)
 {
     uint32_t option_value = 0U;
@@ -331,11 +356,13 @@ bool menu_setting_session_begin(menu_setting_session_t *session, const menu_sett
     return true;
 }
 
+/* 判断当前是否存在有效的设置会话。 */
 bool menu_setting_session_is_active(const menu_setting_session_t *session)
 {
     return (session != NULL) && session->active && (session->setting != NULL);
 }
 
+/* 响应“上”键：数值型设置加当前位，选项型设置切到上一个候选值。 */
 bool menu_setting_session_step_up(menu_setting_session_t *session)
 {
     if (!menu_setting_session_is_active(session))
@@ -356,6 +383,7 @@ bool menu_setting_session_step_up(menu_setting_session_t *session)
     }
 }
 
+/* 响应“下”键：数值型设置减当前位，选项型设置切到下一个候选值。 */
 bool menu_setting_session_step_down(menu_setting_session_t *session)
 {
     if (!menu_setting_session_is_active(session))
@@ -376,6 +404,11 @@ bool menu_setting_session_step_down(menu_setting_session_t *session)
     }
 }
 
+/*
+ * 响应“确认”键。
+ * 对数值型设置，前几次确认用于把光标逐位左移，直到最后一位才真正提交；
+ * 对选项型和动作型设置，则会直接调用后端提交或执行动作。
+ */
 menu_setting_session_event_t menu_setting_session_confirm(menu_setting_session_t *session)
 {
     parameter_apply_status_t apply_status = PARAMETER_APPLY_UNSUPPORTED;
@@ -427,6 +460,7 @@ menu_setting_session_event_t menu_setting_session_confirm(menu_setting_session_t
     }
 }
 
+/* 把当前会话状态整理成页面渲染需要的只读视图。 */
 bool menu_setting_session_build_view(const menu_setting_session_t *session, menu_setting_view_t *view)
 {
     uint16_t option_index;

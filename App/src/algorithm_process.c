@@ -1,3 +1,8 @@
+/*
+ * 单组算法处理文件。
+ * 本文件把已经计算好的 t1 / t2 / dt 继续转换为流速、流量和报警状态，
+ * 是“时延量 -> 流量结果”的核心封装层。
+ */
 #include "algorithm_process.h"
 #include "algorithm_flow.h"
 #include "app_config.h"
@@ -12,6 +17,17 @@
 extern kalman_t kf;
 extern ALARM_TYPE g_alarm;
 
+/*
+ * 处理一组算法输入并尝试生成新的输出结果。
+ * 运行流程为：
+ * 1. 先按 t1 / t2 / dt 判断本组数据是否明显异常；
+ * 2. 更新 SQ 统计窗口；
+ * 3. 计算原始流速；
+ * 4. 经过滑动窗口平均、卡尔曼滤波、零漂补偿和上下限裁剪；
+ * 5. 更新最终输出和报警状态。
+ *
+ * 只有在“窗口条件满足且本轮产生了新平均值”时才返回 true。
+ */
 bool algorithm_process_group(Pipe_Parameters_t *para,
                              Pipe_algo_state_t *state,
                              Pipe_algo_out_data_t *out,

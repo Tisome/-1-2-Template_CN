@@ -1,3 +1,8 @@
+/*
+ * 算法任务文件。
+ * 本文件负责从接收队列取原始超声数据包，完成解包、时间量计算、流速/流量算法处理，
+ * 再将结果写回全局输出和算法结果队列，供 GUI 与 Modbus 查询。
+ */
 #include "algorithm_packet.h"
 #include "algorithm_process.h"
 #include "freertos_resources.h"
@@ -17,6 +22,7 @@
 #define ALGO_ERROR_LOG_PERIOD_MS   1000U
 #define ALGO_OUTPUT_LOG_PERIOD_MS  1000U
 
+/* 用于控制低频日志输出，避免高频任务把 RTT 日志刷爆。 */
 static bool algo_should_log(TickType_t now_tick,
                             TickType_t *last_log_tick,
                             TickType_t period_tick)
@@ -35,6 +41,7 @@ static bool algo_should_log(TickType_t now_tick,
     return false;
 }
 
+/* 按统一格式输出算法结果，便于 RTT / Ozone 中观察当前测量状态。 */
 static void algo_log_output(const Pipe_algo_out_data_t *out, ALARM_TYPE alarm)
 {
     if (out == NULL)
@@ -53,6 +60,16 @@ static void algo_log_output(const Pipe_algo_out_data_t *out, ALARM_TYPE alarm)
           alarm);
 }
 
+/*
+ * 算法主任务。
+ * 运行过程如下：
+ * 1. 从 `xQueue_Rx_Index_Buf` 等待一帧原始数据；
+ * 2. 解析为 idx/y 数据，并换算出 t1/t2/dt；
+ * 3. 调用 `algorithm_process_group()` 完成整组算法处理；
+ * 4. 将新结果写入 `xQueue_AlgoOut`，供 GUI 和 Modbus 读取。
+ *
+ * 本任务是“数据处理主链”的核心消费者，假数据任务或真实 SPI 接收任务都是它的上游。
+ */
 void task_algorithm(void *pvParameter)
 {
     rufx_raw_packet_t raw = {0};

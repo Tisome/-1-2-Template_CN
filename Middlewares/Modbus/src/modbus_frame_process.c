@@ -1,3 +1,12 @@
+/*
+ * Modbus 寄存器映射与协议执行文件。
+ * 本文件负责三件事：
+ * 1. 维护线圈、离散输入、保持寄存器、输入寄存器四类协议映射
+ * 2. 处理 0x01/0x02/0x03/0x04/0x05/0x06/0x10 等功能码
+ * 3. 将 Modbus 写操作最终转接到参数系统 `data.c`
+ *
+ * 可以把它理解为“Modbus 协议层”和“参数/测量数据层”之间的桥接层。
+ */
 #include "modbus_frame_process.h"
 #include "modbus_crc.h"
 #include "modbus_map.h"
@@ -42,6 +51,7 @@ static void modbus_send_expection_respense(modbus_parser_t *parser,
 /* -------------------- 内部辅助函数 -------------------- */
 
 /* 高字在前 把一个32位有符号整数 拆成2个16位寄存器 */
+/* 将 32 位有符号值拆成两个 16 位寄存器，高字在前。 */
 static void set_s32_to_regs(uint16_t *regs, uint16_t start_idx, int32_t value)
 {
     uint32_t u = (uint32_t)value;
@@ -50,6 +60,7 @@ static void set_s32_to_regs(uint16_t *regs, uint16_t start_idx, int32_t value)
 }
 
 /* 高字在前 把一个32位有符号整数 拆成4个16位寄存器 */
+/* 将 64 位有符号值拆成四个 16 位寄存器，高字在前。 */
 static void set_s64_to_regs(uint16_t *regs, uint16_t start_idx, int64_t value)
 {
     uint64_t u = (uint64_t)value;
@@ -60,6 +71,7 @@ static void set_s64_to_regs(uint16_t *regs, uint16_t start_idx, int64_t value)
 }
 
 /* 高字在前的模式 从2个16位寄存器拼回一个32位有符号整数 */
+/* 从两个 16 位寄存器拼回 32 位有符号值，高字在前。 */
 static int32_t get_s32_from_regs(const uint16_t *regs, uint16_t start_idx)
 {
     uint32_t u = ((uint32_t)regs[start_idx] << 16) |
@@ -68,12 +80,14 @@ static int32_t get_s32_from_regs(const uint16_t *regs, uint16_t start_idx)
 }
 
 /* 从 bit 打包数组里读取某一位 */
+/* 从位打包缓冲区中读取一个 bit。 */
 static uint8_t get_bit_from_buf(const uint8_t *buf, uint16_t bit_index)
 {
     return (buf[bit_index / 8] >> (bit_index % 8)) & 0x01;
 }
 
 /* 给 bit 打包数组某一位写 0 或 1 */
+/* 向位打包缓冲区中写入一个 bit。 */
 static void set_bit_to_buf(uint8_t *buf, uint16_t bit_index, uint8_t value)
 {
     if (value)
@@ -87,12 +101,14 @@ static void set_bit_to_buf(uint8_t *buf, uint16_t bit_index, uint8_t value)
 }
 
 /* 从 buf[0], buf[1] 读取一个大端 16 位数 */
+/* 从大端字节序中读取一个 16 位数。 */
 static uint16_t modbus_get_u16_be(const uint8_t *buf)
 {
     return ((uint16_t)buf[0] << 8) | buf[1];
 }
 
 /* 把 16 位数按 大端 写进 buffer */
+/* 将 16 位数按大端写入字节缓冲区。 */
 static void modbus_put_u16_be(uint8_t *buf, uint16_t value)
 {
     buf[0] = (uint8_t)((value >> 8) & 0xFF);
@@ -100,112 +116,22 @@ static void modbus_put_u16_be(uint8_t *buf, uint16_t value)
 }
 
 /* 检查速度单位枚举值是否合法 */
-static bool is_valid_speed_unit(uint16_t value)
-{
-    return value <= (uint16_t)SPEED_UNIT_MM_P_S;
-}
-
 /* 检查流量单位是否合法 */
-static bool is_valid_rate_unit(uint16_t value)
-{
-    return value <= (uint16_t)RATE_UNIT_L_P_S;
-}
-
 /* 检查管道类型是否合法 */
-static bool is_valid_pipe_type(uint16_t value)
-{
-    return value <= (uint16_t)PIPE_ALLOY;
-}
-
 /* 判断某个 holding register 地址是否允许写 */
+/* 判断某个保持寄存器地址是否允许通过 Modbus 改写。 */
 static bool is_holding_register_writable(uint16_t reg_addr)
 {
     return reg_addr <= HR_LAST_WRITABLE;
 }
 
 /* 检查一组参数是否合法 */
-static bool validate_parameters(const Pipe_Parameters_t *para)
-{
-    if (para == NULL)
-    {
-        return false;
-    }
-
-    if ((para->inner_diameter <= 0.0) || (para->inner_diameter > 10000.0))
-    {
-        return false;
-    }
-
-    if ((para->wall_thick <= 0.0) || (para->wall_thick >= para->inner_diameter))
-    {
-        return false;
-    }
-
-    if ((para->cos_value <= 0.0) || (para->cos_value > 1.0))
-    {
-        return false;
-    }
-
-    if ((para->sin_value <= 0.0) || (para->sin_value > 1.0))
-    {
-        return false;
-    }
-
-    if ((para->lower_speed_range < 0.0) ||
-        (para->upper_speed_range <= 0.0) ||
-        (para->lower_speed_range >= para->upper_speed_range))
-    {
-        return false;
-    }
-
-    if ((para->alarm_lower_rate_range < 0.0) ||
-        (para->alarm_upper_rate_range < para->alarm_lower_rate_range))
-    {
-        return false;
-    }
-
-    if ((fabs(para->zero_offset_speed) > para->zero_learn_offset_max) ||
-        (para->zero_learn_flow_speed < 0.0) ||
-        (para->zero_learn_alpha <= 0.0) ||
-        (para->zero_learn_alpha > 1.0) ||
-        (para->zero_learn_offset_max < 0.0))
-    {
-        return false;
-    }
-
-    if ((para->zero_learn_sq_min < 0.0) || (para->zero_learn_sq_min > 100.0))
-    {
-        return false;
-    }
-
-    if (para->te_ns < 0.0)
-    {
-        return false;
-    }
-
-    if (para->zero_stable_threshold == 0U)
-    {
-        return false;
-    }
-
-#if USE_MODBUS
-    if ((para->modbus_addr == 0U) || (para->modbus_addr > 247U))
-    {
-        return false;
-    }
-#endif
-
-    if (!is_valid_pipe_type((uint16_t)para->pipe_type) ||
-        !is_valid_speed_unit((uint16_t)para->speed_unit_type) ||
-        !is_valid_rate_unit((uint16_t)para->rate_unit_type))
-    {
-        return false;
-    }
-
-    return true;
-}
 
 /* 把 holding register 里的值，填回一个 Pipe_Parameters_t 结构体 */
+/*
+ * 将当前保持寄存器区的内容还原为一份参数结构。
+ * 主要用于 0x06 / 0x10 写寄存器后，尝试把寄存器值真正应用到 `g_parameters`。
+ */
 static void fill_parameters_from_holding_registers(Pipe_Parameters_t *para)
 {
     if (para == NULL)
@@ -239,6 +165,11 @@ static void fill_parameters_from_holding_registers(Pipe_Parameters_t *para)
 }
 
 /* 把当前 holding register 里的内容尝试应用到 g_parameters，并保存到 EEPROM */
+/*
+ * 将保持寄存器中的内容提交到参数系统。
+ * 如果参数非法或保存失败，会把协议层应该返回的异常码写回 `exception_code`，
+ * 同时回滚保持寄存器区，保证 Modbus 映射与真实参数保持一致。
+ */
 static bool apply_holding_registers_to_parameters(uint8_t *exception_code)
 {
     Pipe_Parameters_t new_parameters = g_parameters;
@@ -278,6 +209,7 @@ static bool apply_holding_registers_to_parameters(uint8_t *exception_code)
 /* -------------------- 读线圈 0x01 -------------------- */
 
 // 可以连续读线圈，返回的值在data中连续给出
+/* 处理 0x01：读线圈。 */
 static void handle_read_coil(modbus_parser_t *parser)
 {
     uint16_t start_addr = modbus_get_u16_be(&parser->data[0]);
@@ -317,6 +249,7 @@ static void handle_read_coil(modbus_parser_t *parser)
 
 /* -------------------- 读离散输入 0x02 -------------------- */
 
+/* 处理 0x02：读离散输入。 */
 static void handle_read_discrete_inputs(modbus_parser_t *parser)
 {
     uint16_t start_addr = modbus_get_u16_be(&parser->data[0]);
@@ -356,6 +289,7 @@ static void handle_read_discrete_inputs(modbus_parser_t *parser)
 
 /* -------------------- 读保持寄存器 0x03 -------------------- */
 
+/* 处理 0x03：读保持寄存器。 */
 static void handle_read_holding_registers(modbus_parser_t *parser)
 {
     uint16_t start_addr = modbus_get_u16_be(&parser->data[0]);
@@ -390,6 +324,7 @@ static void handle_read_holding_registers(modbus_parser_t *parser)
 
 /* -------------------- 读输入寄存器 0x04 -------------------- */
 
+/* 处理 0x04：读输入寄存器。 */
 static void handle_read_input_registers(modbus_parser_t *parser)
 {
     uint16_t start_addr = modbus_get_u16_be(&parser->data[0]);
@@ -428,6 +363,12 @@ static void handle_read_input_registers(modbus_parser_t *parser)
 // 0xFF00 置位
 // 0x0000 清零
 // 这里的每个置位都要有相应的执行
+/*
+ * 处理 0x05：写单线圈。
+ * 这里分成两类：
+ * 1. 状态型线圈：直接保存状态，例如测量使能；
+ * 2. 命令型线圈：转成 `modbus_cmd_t` 后投递给执行任务异步处理。
+ */
 static void handle_write_single_coil(modbus_parser_t *parser)
 {
     uint16_t addr = modbus_get_u16_be(&parser->data[0]);
@@ -524,6 +465,7 @@ static void handle_write_single_coil(modbus_parser_t *parser)
 
 /* -------------------- 写单个寄存器 0x06 -------------------- */
 
+/* 处理 0x06：写单寄存器，并尝试把新值同步到真实参数。 */
 static void handle_write_single_registers(modbus_parser_t *parser)
 {
     uint16_t reg_addr = modbus_get_u16_be(&parser->data[0]);
@@ -554,6 +496,11 @@ static void handle_write_single_registers(modbus_parser_t *parser)
 
 /* -------------------- 写多个寄存器 0x10 -------------------- */
 
+/*
+ * 处理 0x10：写多个寄存器。
+ * 它会先批量写入保持寄存器镜像，再统一提交到参数系统；
+ * 这样能保证多字段更新时的原子性，不会出现“只改了一半参数”的中间状态。
+ */
 static void handle_write_multiple_registers(modbus_parser_t *parser)
 {
     uint16_t start_addr = modbus_get_u16_be(&parser->data[0]);
@@ -613,6 +560,7 @@ static void handle_write_multiple_registers(modbus_parser_t *parser)
 
 /* -------------------- 响应发送 -------------------- */
 
+/* 组装并发送标准 Modbus RTU 响应帧。 */
 static void modbus_send_response(uint8_t address, uint8_t function, uint8_t *data, uint8_t data_len)
 {
     uint16_t crc = 0xFFFF;
@@ -640,6 +588,7 @@ static void modbus_send_response(uint8_t address, uint8_t function, uint8_t *dat
 
 /* -------------------- 异常响应 -------------------- */
 
+/* 组装并发送 Modbus 异常响应帧。 */
 static void modbus_send_expection_respense(modbus_parser_t *parser, uint8_t exception_code)
 {
     uint8_t data[1];
@@ -656,6 +605,7 @@ static void modbus_send_expection_respense(modbus_parser_t *parser, uint8_t exce
 /* -------------------- 初始化 -------------------- */
 
 /* 初始化modbus模块中会用到的内存变量 */
+/* 初始化 Modbus 映射区与命令队列，系统启动时调用一次。 */
 void init_modbus_data(void)
 {
     g_modbus_cmd_queue = xQueueCreate(8, sizeof(modbus_cmd_t));
@@ -675,6 +625,10 @@ void init_modbus_data(void)
 }
 
 /* 更新input 包括寄存器和离散输入 */
+/*
+ * 刷新输入寄存器和离散输入。
+ * 这些寄存器本质上是算法输出和报警状态的“协议镜像”，每次读 0x04 或相关状态变化后都要更新。
+ */
 void update_input_registers(void)
 {
     int32_t s32_val = 0;
@@ -761,6 +715,7 @@ void update_input_registers(void)
 }
 
 /* 更新holding_register | 也就是parameter中的参数 */
+/* 用真实参数刷新保持寄存器镜像，保证协议层读到的是最新配置。 */
 void update_holding_registers_from_parameters(void)
 {
     memset(g_modbus_holding_registers, 0, sizeof(g_modbus_holding_registers));
@@ -816,6 +771,7 @@ void update_holding_registers_from_parameters(void)
 
 /* -------------------- 功能分发 -------------------- */
 
+/* Modbus 功能码总分发入口，由解析任务在 CRC 校验通过后调用。 */
 void process_modbus_frame(modbus_parser_t *parser)
 {
     if (parser->address != MODBUS_SLAVE_ADDR)

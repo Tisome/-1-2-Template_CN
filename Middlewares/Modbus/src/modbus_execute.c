@@ -1,3 +1,13 @@
+/*
+ * Modbus 命令执行任务文件。
+ * 与“读/写寄存器”不同，某些线圈命令代表的是动作请求，例如：
+ * 1. 清零累计量
+ * 2. 启动零漂学习
+ * 3. 恢复默认参数
+ * 4. 软件复位
+ *
+ * 这些命令会先在协议层入队，再由本任务在任务上下文中执行，避免在协议解析流程中做重操作。
+ */
 #include "modbus_frame_process.h"
 #include "modbus_map.h"
 #include "data.h"
@@ -8,6 +18,7 @@
 
 #include "elog.h"
 
+/* Modbus 动作命令执行任务入口。 */
 void task_modbus_execute(void *parameter)
 {
     modbus_cmd_t cmd;

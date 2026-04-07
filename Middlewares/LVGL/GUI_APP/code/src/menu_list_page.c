@@ -1,7 +1,13 @@
+/*
+ * 菜单列表页渲染文件。
+ * 本文件负责把当前导航状态转换成 LVGL 列表界面，包括标题、页码、
+ * 列表项文本以及选中高亮样式。
+ */
 #include "menu_list_page.h"
 
 #include <stdio.h>
 
+/* 根据是否选中，为某一行切换背景和边框样式。 */
 static void menu_list_page_apply_style(menu_list_page_t *page, uint16_t row_index, bool selected)
 {
     lv_color_t bg_color;
@@ -21,6 +27,7 @@ static void menu_list_page_apply_style(menu_list_page_t *page, uint16_t row_inde
     lv_obj_set_style_text_color(page->item_labels[row_index], lv_color_hex(MENU_COLOR_TEXT), 0);
 }
 
+/* 创建列表页所需的所有 LVGL 控件。 */
 void menu_list_page_create(menu_list_page_t *page, lv_obj_t *parent)
 {
     uint16_t row_index;
@@ -73,6 +80,7 @@ void menu_list_page_create(menu_list_page_t *page, lv_obj_t *parent)
     }
 }
 
+/* 显示或隐藏整个列表页面。 */
 void menu_list_page_set_visible(menu_list_page_t *page, bool visible)
 {
     if (page == NULL)
@@ -83,6 +91,7 @@ void menu_list_page_set_visible(menu_list_page_t *page, bool visible)
     menu_set_page_hidden(page->root, !visible);
 }
 
+/* 根据导航状态刷新列表页显示内容。 */
 void menu_list_page_render(menu_list_page_t *page, const menu_nav_state_t *nav_state)
 {
     const menu_page_t *current_page;

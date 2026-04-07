@@ -1,3 +1,8 @@
+/*
+ * 菜单静态数据定义文件。
+ * 这里集中描述菜单树、设置项类型、可选值和默认展示方式，
+ * 供导航层与设置后端共同使用。
+ */
 #include "menu_data.h"
 
 #include "data.h"
@@ -169,6 +174,7 @@ static const menu_page_t s_menu_root_page = {
     MENU_VISIBLE_ITEMS,
     0U};
 
+/* 返回菜单根页面，作为整个菜单导航的起点。 */
 const menu_page_t *menu_data_get_root_page(void)
 {
     return &s_menu_root_page;
