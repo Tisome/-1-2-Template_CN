@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the EasyLogger Library.
  *
  * Copyright (c) 2015-2018, Armink, <armink.ztl@gmail.com>
@@ -28,6 +28,7 @@
 
 #define LOG_TAG "elog"
 
+#include "app_config.h"
 #include "SEGGER_RTT.h"
 #include <elog.h>
 #include <stdarg.h>
@@ -153,11 +154,11 @@ extern void elog_port_output(const char *log, size_t size);
 extern void elog_port_output_lock(void);
 extern void elog_port_output_unlock(void);
 
-// 日志初始化
+// 鏃ュ織鍒濆鍖?
 void my_elog_init(void)
 {
     SEGGER_RTT_Init();
-    // setbuf(stdout, NULL); // 走SEGGER_RTT输出，不经过printf，不用把缓冲区缩小
+    // setbuf(stdout, NULL); // 璧癝EGGER_RTT杈撳嚭锛屼笉缁忚繃printf锛屼笉鐢ㄦ妸缂撳啿鍖虹缉灏?
     elog_init();
 
     elog_set_fmt(ELOG_LVL_ASSERT, ELOG_FMT_TIME | ELOG_FMT_LVL | ELOG_FMT_TAG | ELOG_FMT_DIR | ELOG_FMT_LINE | ELOG_FMT_FUNC);
@@ -166,7 +167,12 @@ void my_elog_init(void)
     elog_set_fmt(ELOG_LVL_INFO, ELOG_FMT_TIME | ELOG_FMT_LVL | ELOG_FMT_TAG | ELOG_FMT_DIR | ELOG_FMT_LINE | ELOG_FMT_FUNC);
     elog_set_fmt(ELOG_LVL_WARN, ELOG_FMT_TIME | ELOG_FMT_LVL | ELOG_FMT_TAG | ELOG_FMT_DIR | ELOG_FMT_LINE | ELOG_FMT_FUNC);
 
+#if APP_ELOG_ENABLE
+    elog_set_filter_lvl(APP_ELOG_FILTER_LVL);
     elog_start();
+#else
+    elog_set_output_enabled(false);
+#endif
 }
 
 /**
@@ -1070,3 +1076,4 @@ void elog_hexdump(const char *name, uint8_t width, const void *buf, uint16_t siz
     /* unlock output */
     elog_output_unlock();
 }
+

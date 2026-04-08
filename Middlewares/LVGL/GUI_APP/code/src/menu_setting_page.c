@@ -7,6 +7,56 @@
 
 #include "menu_strings.h"
 #include <stdio.h>
+#include <string.h>
+
+static void menu_setting_page_render_body(menu_setting_page_t *page,
+                                          const char *text)
+{
+    static const lv_coord_t s_body_y[] = {92, 118, 144, 170};
+    const char *cursor = text;
+    uint16_t line_index;
+
+    if (page == NULL)
+    {
+        return;
+    }
+
+    for (line_index = 0U; line_index < 4U; line_index++)
+    {
+        page->body_text[line_index][0] = '\0';
+        lv_label_set_text_static(page->body_labels[line_index], page->body_text[line_index]);
+        menu_set_page_hidden(page->body_labels[line_index], true);
+    }
+
+    if (text == NULL)
+    {
+        return;
+    }
+
+    for (line_index = 0U; (line_index < 4U) && (*cursor != '\0'); line_index++)
+    {
+        size_t copy_len = 0U;
+
+        while ((cursor[copy_len] != '\0') &&
+               (cursor[copy_len] != '\n') &&
+               (copy_len + 1U < sizeof(page->body_text[line_index])))
+        {
+            page->body_text[line_index][copy_len] = cursor[copy_len];
+            copy_len++;
+        }
+
+        page->body_text[line_index][copy_len] = '\0';
+        lv_label_set_text_static(page->body_labels[line_index], page->body_text[line_index]);
+        lv_obj_align(page->body_labels[line_index], LV_ALIGN_TOP_MID, 0, s_body_y[line_index]);
+        menu_set_page_hidden(page->body_labels[line_index], false);
+
+        cursor += copy_len;
+        if (*cursor == '\n')
+        {
+            cursor++;
+        }
+    }
+}
 
 /* 按字符逐位渲染设置值，并高亮当前选中的编辑位。 */
 static void menu_setting_page_render_value(menu_setting_page_t *page,
@@ -131,15 +181,18 @@ void menu_setting_page_create(menu_setting_page_t *page, lv_obj_t *parent)
     lv_obj_align_to(page->unit_label, page->value_panel, LV_ALIGN_OUT_RIGHT_MID, 8, 0);
     lv_label_set_text_static(page->unit_label, "");
 
-    page->body_label = lv_label_create(page->root);
-    lv_label_set_long_mode(page->body_label, LV_LABEL_LONG_WRAP);
-    lv_obj_set_width(page->body_label, 200);
-    lv_obj_set_style_text_font(page->body_label, menu_font_latin_16(), 0);
-    lv_obj_set_style_text_color(page->body_label, lv_color_hex(MENU_COLOR_SUBTEXT), 0);
-    lv_obj_set_style_text_align(page->body_label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_align(page->body_label, LV_ALIGN_TOP_MID, 0, 118);
-    page->body_text[0] = '\0';
-    lv_label_set_text_static(page->body_label, page->body_text);
+    for (index = 0U; index < 4U; index++)
+    {
+        page->body_labels[index] = lv_label_create(page->root);
+        lv_obj_set_width(page->body_labels[index], 210);
+        lv_obj_set_style_text_font(page->body_labels[index], menu_font_latin_16(), 0);
+        lv_obj_set_style_text_color(page->body_labels[index], lv_color_hex(MENU_COLOR_SUBTEXT), 0);
+        lv_obj_set_style_text_align(page->body_labels[index], LV_TEXT_ALIGN_CENTER, 0);
+        page->body_text[index][0] = '\0';
+        lv_label_set_text_static(page->body_labels[index], page->body_text[index]);
+        lv_obj_align(page->body_labels[index], LV_ALIGN_TOP_MID, 0, 92 + (lv_coord_t)(26U * index));
+        menu_set_page_hidden(page->body_labels[index], true);
+    }
 
     page->footer_label = lv_label_create(page->root);
     lv_label_set_text_static(page->footer_label, MENU_TXT_BACK);
@@ -173,8 +226,7 @@ void menu_setting_page_render(menu_setting_page_t *page,
     {
         lv_label_set_text_static(page->title_label, "");
         lv_label_set_text_static(page->unit_label, "");
-        page->body_text[0] = '\0';
-        lv_label_set_text_static(page->body_label, page->body_text);
+        menu_setting_page_render_body(page, "");
         menu_set_page_hidden(page->value_panel, true);
         menu_set_page_hidden(page->unit_label, true);
         menu_setting_page_render_value(page, NULL);
@@ -185,8 +237,7 @@ void menu_setting_page_render(menu_setting_page_t *page,
 
     if (view == NULL)
     {
-        (void)snprintf(page->body_text, sizeof(page->body_text), "%s", setting->placeholder_text);
-        lv_label_set_text_static(page->body_label, page->body_text);
+        menu_setting_page_render_body(page, setting->placeholder_text);
         menu_set_page_hidden(page->value_panel, true);
         menu_set_page_hidden(page->unit_label, true);
         menu_setting_page_render_value(page, NULL);
@@ -208,6 +259,5 @@ void menu_setting_page_render(menu_setting_page_t *page,
         menu_set_page_hidden(page->unit_label, true);
     }
 
-    (void)snprintf(page->body_text, sizeof(page->body_text), "%s", view->detail_text);
-    lv_label_set_text_static(page->body_label, page->body_text);
+    menu_setting_page_render_body(page, view->detail_text);
 }

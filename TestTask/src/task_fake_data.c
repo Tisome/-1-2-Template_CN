@@ -197,7 +197,7 @@ static void fake_data_refresh_cfg(const Pipe_Parameters_t *para,
     fake_data_get_speed_range(para, &lower_speed_mps, &upper_speed_mps);
 
 #if FAKE_DATA_MODE == FAKE_DATA_MODE_SPEED
-    fake_data_set_cfg(lower_speed_mps, upper_speed_mps, 12.0f, para->rate_unit_type);
+    fake_data_set_cfg(lower_speed_mps, upper_speed_mps, 80.0f, para->rate_unit_type);
 #else
     {
         double area_m2 = fake_pipe_area_m2(para);

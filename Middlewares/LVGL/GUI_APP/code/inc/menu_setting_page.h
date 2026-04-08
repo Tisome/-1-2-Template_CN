@@ -12,12 +12,12 @@ typedef struct
     lv_obj_t *title_label;
     lv_obj_t *value_panel;
     lv_obj_t *unit_label;
-    lv_obj_t *body_label;
+    lv_obj_t *body_labels[4];
     lv_obj_t *footer_label;
     lv_obj_t *char_boxes[MENU_SETTING_PAGE_MAX_CHARS];
     lv_obj_t *char_labels[MENU_SETTING_PAGE_MAX_CHARS];
     char char_text[MENU_SETTING_PAGE_MAX_CHARS][2];
-    char body_text[96];
+    char body_text[4][32];
 } menu_setting_page_t;
 
 void menu_setting_page_create(menu_setting_page_t *page, lv_obj_t *parent);

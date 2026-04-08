@@ -1,5 +1,28 @@
 #define USE_MODBUS 1
 
+/************************* software info define *************************/
+#ifndef APP_SW_NAME
+#define APP_SW_NAME "RUF-Q20"
+#endif
+
+#ifndef APP_SW_VERSION
+#define APP_SW_VERSION "RUF-V1.0.2"
+#endif
+
+/************************* elog define *************************/
+#ifndef APP_ELOG_ENABLE
+#define APP_ELOG_ENABLE 1
+#endif
+
+/*
+ * EasyLogger 运行时全局过滤级别。
+ * 0~5 分别对应 ASSERT/ERROR/WARN/INFO/DEBUG/VERBOSE。
+ * 关闭日志时该值不会生效。
+ */
+#ifndef APP_ELOG_FILTER_LVL
+#define APP_ELOG_FILTER_LVL 3
+#endif
+
 /************************* E2PROM define *************************/
 #if defined(CCT6)
 #define BOARD_HAS_E2PROM 1

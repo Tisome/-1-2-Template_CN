@@ -25,12 +25,12 @@ static fake_data_cfg_t g_fake_data_cfg =
 #if FAKE_DATA_MODE == FAKE_DATA_MODE_SPEED
         .lower = 1.0f, /* m/s */
         .upper = 4.0f, /* m/s */
-        .period_s = 10.0f,
+        .period_s = 80.0f,
         .flow_unit_type = RATE_UNIT_M3_P_H
 #elif FAKE_DATA_MODE == FAKE_DATA_MODE_FLOW
         .lower = 10.0f,
         .upper = 40.0f,
-        .period_s = 10.0f,
+        .period_s = 80.0f,
         .flow_unit_type = RATE_UNIT_L_P_MIN
 #endif
 };
