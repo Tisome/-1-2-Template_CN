@@ -61,6 +61,15 @@ static double convert_rate_to_m3ps(double rate, RateUnitType unit)
     }
 }
 
+/* 将目标流速换算为当前配置的流量单位，便于日志和界面联调时核对。 */
+static double fake_speed_to_rate_display(double speed_mps, const Pipe_Parameters_t *para)
+{
+    double area_m2 = fake_pipe_area_m2(para);
+    double flow_m3ps = speed_mps * area_m2;
+
+    return convert_rate_from_m3ps(flow_m3ps, para->rate_unit_type);
+}
+
 /*
  * 根据当前参数自动推导假数据目标流速范围。
  * 优先参考流速上下限和报警上下限，尽量让假数据落在“可测且不过度报警”的区间内。
@@ -188,16 +197,17 @@ static void fake_data_refresh_cfg(const Pipe_Parameters_t *para,
     fake_data_get_speed_range(para, &lower_speed_mps, &upper_speed_mps);
 
 #if FAKE_DATA_MODE == FAKE_DATA_MODE_SPEED
-    fake_data_set_cfg(lower_speed_mps, upper_speed_mps, 12.0f);
+    fake_data_set_cfg(lower_speed_mps, upper_speed_mps, 12.0f, para->rate_unit_type);
 #else
     {
         double area_m2 = fake_pipe_area_m2(para);
         double lower_m3ps = (double)lower_speed_mps * area_m2;
         double upper_m3ps = (double)upper_speed_mps * area_m2;
 
-        fake_data_set_cfg((float)convert_rate_from_m3ps(lower_m3ps, RATE_UNIT_L_P_MIN),
-                          (float)convert_rate_from_m3ps(upper_m3ps, RATE_UNIT_L_P_MIN),
-                          12.0f);
+        fake_data_set_cfg((float)convert_rate_from_m3ps(lower_m3ps, para->rate_unit_type),
+                          (float)convert_rate_from_m3ps(upper_m3ps, para->rate_unit_type),
+                          12.0f,
+                          para->rate_unit_type);
     }
 #endif
 
@@ -209,28 +219,33 @@ static void fake_data_log_cfg(const fake_data_cfg_t *cfg,
                               const Pipe_Parameters_t *para,
                               float time_s)
 {
+    float lower_speed_mps = 0.0f;
+    float upper_speed_mps = 0.0f;
     float target_speed_mps = 0.0f;
+    double lower_rate = 0.0;
+    double upper_rate = 0.0;
+    double target_rate = 0.0;
 
     if ((cfg == NULL) || (para == NULL))
     {
         return;
     }
 
+    fake_data_get_speed_range(para, &lower_speed_mps, &upper_speed_mps);
     target_speed_mps = fake_data_get_target_speed_mps(time_s, para);
+    lower_rate = fake_speed_to_rate_display((double)lower_speed_mps, para);
+    upper_rate = fake_speed_to_rate_display((double)upper_speed_mps, para);
+    target_rate = fake_speed_to_rate_display((double)target_speed_mps, para);
 
-#if FAKE_DATA_MODE == FAKE_DATA_MODE_SPEED
-    log_i("fake cfg: %.2f~%.2f m/s, period=%.1f s, target=%.2f m/s",
-          cfg->lower,
-          cfg->upper,
+    log_i("fake cfg: %.2f~%.2f m/s, %.2f~%.2f %s, period=%.1f s, target=%.2f %s",
+          lower_speed_mps,
+          upper_speed_mps,
+          lower_rate,
+          upper_rate,
+          rate_unit_to_str(para->rate_unit_type),
           cfg->period_s,
-          target_speed_mps);
-#else
-    log_i("fake cfg: %.2f~%.2f L/min, period=%.1f s, target=%.2f m/s",
-          cfg->lower,
-          cfg->upper,
-          cfg->period_s,
-          target_speed_mps);
-#endif
+          target_rate,
+          rate_unit_to_str(para->rate_unit_type));
 }
 
 /*

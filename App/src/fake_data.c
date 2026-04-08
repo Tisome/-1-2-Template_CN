@@ -25,11 +25,13 @@ static fake_data_cfg_t g_fake_data_cfg =
 #if FAKE_DATA_MODE == FAKE_DATA_MODE_SPEED
         .lower = 1.0f, /* m/s */
         .upper = 4.0f, /* m/s */
-        .period_s = 10.0f
+        .period_s = 10.0f,
+        .flow_unit_type = RATE_UNIT_M3_P_H
 #elif FAKE_DATA_MODE == FAKE_DATA_MODE_FLOW
-        .lower = 10.0f, /* L/min */
-        .upper = 40.0f, /* L/min */
-        .period_s = 10.0f
+        .lower = 10.0f,
+        .upper = 40.0f,
+        .period_s = 10.0f,
+        .flow_unit_type = RATE_UNIT_L_P_MIN
 #endif
 };
 
@@ -62,11 +64,30 @@ static double pipe_area_m2(const Pipe_Parameters_t *para)
     return M_PI * r_m * r_m;
 }
 
-/* L/min -> m^3/s */
-/* 将 L/min 转换为 m^3/s。 */
-static double lpm_to_m3ps(double q_lpm)
+/* 将任意流量单位统一转换为 m^3/s。 */
+static double rate_to_m3ps(double rate_value, RateUnitType unit)
 {
-    return q_lpm * 1e-3 / 60.0;
+    switch (unit)
+    {
+    case RATE_UNIT_M3_P_H:
+        return rate_value / 3600.0;
+
+    case RATE_UNIT_M3_P_MIN:
+        return rate_value / 60.0;
+
+    case RATE_UNIT_L_P_H:
+        return rate_value / (1000.0 * 3600.0);
+
+    case RATE_UNIT_L_P_MIN:
+        return rate_value / (1000.0 * 60.0);
+
+    case RATE_UNIT_L_P_S:
+        return rate_value / 1000.0;
+
+    case RATE_UNIT_M3_P_S:
+    default:
+        return rate_value;
+    }
 }
 
 #endif
@@ -109,11 +130,12 @@ static void make_parabola_3pts(double delta, int64_t *y1, int64_t *y2, int64_t *
 /* ========================= 对外接口 ========================= */
 
 /* 设置假数据波形范围和周期。 */
-void fake_data_set_cfg(float lower, float upper, float period_s)
+void fake_data_set_cfg(float lower, float upper, float period_s, RateUnitType flow_unit_type)
 {
     g_fake_data_cfg.lower = lower;
     g_fake_data_cfg.upper = upper;
     g_fake_data_cfg.period_s = period_s;
+    g_fake_data_cfg.flow_unit_type = flow_unit_type;
 }
 
 /* 读取当前假数据配置。 */
@@ -155,8 +177,8 @@ float fake_data_get_target_speed_mps(float t_s, const Pipe_Parameters_t *para)
     return signal;
 
 #elif FAKE_DATA_MODE == FAKE_DATA_MODE_FLOW
-    /* signal 单位 L/min，先转 m^3/s，再除面积得到 m/s */
-    double q_m3ps = lpm_to_m3ps((double)signal);
+    /* signal 单位由 `flow_unit_type` 指定，先转 m^3/s，再除面积得到 m/s */
+    double q_m3ps = rate_to_m3ps((double)signal, g_fake_data_cfg.flow_unit_type);
     double area_m2 = pipe_area_m2(para);
 
     if (area_m2 <= 0.0)

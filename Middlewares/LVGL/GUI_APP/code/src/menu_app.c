@@ -126,52 +126,17 @@ static menu_key_t menu_app_map_key(uint8_t raw_key)
     }
 }
 
-/* 把任意流量单位统一换算成 m^3/s，便于界面内部做统一处理。 */
-static double menu_app_rate_to_m3ps(double rate_value, RateUnitType unit)
+/* 计算圆弧表盘的满量程，使用当前流量单位下的报警上限作为视觉满量程。 */
+static double menu_app_get_arc_full_scale(void)
 {
-    switch (unit)
+    double full_scale = fabs(g_parameters.alarm_upper_rate_range);
+
+    if (full_scale < MENU_MIN_ARC_FULL_SCALE)
     {
-    case RATE_UNIT_M3_P_H:
-        return rate_value / 3600.0;
-
-    case RATE_UNIT_M3_P_MIN:
-        return rate_value / 60.0;
-
-    case RATE_UNIT_L_P_H:
-        return rate_value / (1000.0 * 3600.0);
-
-    case RATE_UNIT_L_P_MIN:
-        return rate_value / (1000.0 * 60.0);
-
-    case RATE_UNIT_L_P_S:
-        return rate_value / 1000.0;
-
-    case RATE_UNIT_M3_P_S:
-    default:
-        return rate_value;
-    }
-}
-
-/* 读取当前瞬时流量，并统一转换为测量页显示所用的 m3/h。 */
-static double menu_app_get_instant_flow_m3ph(void)
-{
-    double flow_m3ps = menu_app_rate_to_m3ps(g_algo_out.flow_rate_instant, g_algo_out.flow_rate_unit);
-
-    return convert_rate_from_m3ps(flow_m3ps, RATE_UNIT_M3_P_H);
-}
-
-/* 计算圆弧表盘的满量程，当前使用报警上限流量作为视觉满量程。 */
-static double menu_app_get_arc_full_scale_m3ph(void)
-{
-    double full_scale_m3ps = menu_app_rate_to_m3ps(g_parameters.alarm_upper_rate_range, g_parameters.rate_unit_type);
-    double full_scale_m3ph = fabs(convert_rate_from_m3ps(full_scale_m3ps, RATE_UNIT_M3_P_H));
-
-    if (full_scale_m3ph < MENU_MIN_ARC_FULL_SCALE)
-    {
-        full_scale_m3ph = 1.0;
+        full_scale = 1.0;
     }
 
-    return full_scale_m3ph;
+    return full_scale;
 }
 
 /* 根据 `display_sensitivity` 计算测量页刷新周期，并做上下限保护。 */
@@ -275,11 +240,13 @@ static void menu_app_hide_all(menu_app_ctx_t *app)
 static void menu_app_render_measure(menu_app_ctx_t *app)
 {
     double sq_value = g_algo_out.sq_value;
-    double instant_flow_m3ph = menu_app_get_instant_flow_m3ph();
-    double total_flow_m3 = g_algo_state.q_total_m3;
-    double full_scale_m3ph = menu_app_get_arc_full_scale_m3ph();
+    double instant_flow_value = g_algo_out.flow_rate_instant;
+    double total_flow_value = g_algo_out.flow_rate_total;
+    double full_scale = menu_app_get_arc_full_scale();
     double ratio;
     int16_t arc_value;
+    const char *flow_unit_text = rate_unit_to_str(g_algo_out.flow_rate_unit);
+    const char *total_unit_text = volume_unit_to_str(g_algo_out.flow_total_unit);
 
     if (sq_value < 0.0)
     {
@@ -290,7 +257,7 @@ static void menu_app_render_measure(menu_app_ctx_t *app)
         sq_value = 100.0;
     }
 
-    ratio = fabs(instant_flow_m3ph) / full_scale_m3ph;
+    ratio = fabs(instant_flow_value) / full_scale;
     if (ratio > 1.0)
     {
         ratio = 1.0;
@@ -300,8 +267,11 @@ static void menu_app_render_measure(menu_app_ctx_t *app)
 
     menu_measure_page_render(&app->measure_page,
                              sq_value,
-                             instant_flow_m3ph,
-                             total_flow_m3,
+                             instant_flow_value,
+                             flow_unit_text,
+                             full_scale,
+                             total_flow_value,
+                             total_unit_text,
                              arc_value);
     s_last_measure_render_tick = lv_tick_get();
     g_menu_app_diag_snapshot.measure_render_count++;

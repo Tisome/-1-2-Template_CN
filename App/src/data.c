@@ -635,6 +635,32 @@ bool parameter_get_double(parameter_field_id_t field_id, double *value)
     }
 }
 
+/* 将任意流量单位统一换算为 m^3/s，供参数换单位时保持物理量等价。 */
+static double convert_rate_to_m3ps(double rate_value, RateUnitType unit)
+{
+    switch (unit)
+    {
+    case RATE_UNIT_M3_P_H:
+        return rate_value / 3600.0;
+
+    case RATE_UNIT_M3_P_MIN:
+        return rate_value / 60.0;
+
+    case RATE_UNIT_L_P_H:
+        return rate_value / (1000.0 * 3600.0);
+
+    case RATE_UNIT_L_P_MIN:
+        return rate_value / (1000.0 * 60.0);
+
+    case RATE_UNIT_L_P_S:
+        return rate_value / 1000.0;
+
+    case RATE_UNIT_M3_P_S:
+    default:
+        return rate_value;
+    }
+}
+
 /* 按字段读取整型/枚举参数，主要供 GUI 设置页和 Modbus 逻辑调用。 */
 bool parameter_get_u32(parameter_field_id_t field_id, uint32_t *value)
 {
@@ -704,6 +730,26 @@ parameter_apply_status_t parameter_commit(const Pipe_Parameters_t *candidate)
 
     new_parameters = *candidate;
     new_parameters.is_saved = parameter_saved_flag_for_board();
+
+    /*
+     * 当仅切换流量单位而报警上下限数值未显式改动时，
+     * 自动把阈值换算到新单位，保持实际物理报警点不变。
+     * 若调用方同时改了阈值数值，则认为它已按目标单位给出，不再重复换算。
+     */
+    if ((old_parameters.rate_unit_type != new_parameters.rate_unit_type) &&
+        parameter_double_equal(old_parameters.alarm_lower_rate_range, new_parameters.alarm_lower_rate_range) &&
+        parameter_double_equal(old_parameters.alarm_upper_rate_range, new_parameters.alarm_upper_rate_range))
+    {
+        double lower_m3ps = convert_rate_to_m3ps(old_parameters.alarm_lower_rate_range,
+                                                 old_parameters.rate_unit_type);
+        double upper_m3ps = convert_rate_to_m3ps(old_parameters.alarm_upper_rate_range,
+                                                 old_parameters.rate_unit_type);
+
+        new_parameters.alarm_lower_rate_range = convert_rate_from_m3ps(lower_m3ps,
+                                                                       new_parameters.rate_unit_type);
+        new_parameters.alarm_upper_rate_range = convert_rate_from_m3ps(upper_m3ps,
+                                                                       new_parameters.rate_unit_type);
+    }
 
     if (!parameter_validate(&new_parameters))
     {

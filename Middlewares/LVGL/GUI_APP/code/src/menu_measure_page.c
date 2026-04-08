@@ -28,10 +28,17 @@ void menu_measure_page_create(menu_measure_page_t *page, lv_obj_t *parent)
     page->sq_text[0] = '\0';
     lv_label_set_text_static(page->sq_label, page->sq_text);
 
+    page->scale_label = lv_label_create(page->root);
+    lv_obj_set_style_text_font(page->scale_label, menu_font_latin_12(), 0);
+    lv_obj_set_style_text_color(page->scale_label, lv_color_white(), 0);
+    lv_obj_align(page->scale_label, LV_ALIGN_TOP_RIGHT, -10, 6);
+    page->scale_text[0] = '\0';
+    lv_label_set_text_static(page->scale_label, page->scale_text);
+
     arc_box = lv_obj_create(page->root);
     menu_prepare_page_root(arc_box);
     lv_obj_set_size(arc_box, 190, 190);
-    lv_obj_align(arc_box, LV_ALIGN_TOP_MID, 0, 25);
+    lv_obj_align(arc_box, LV_ALIGN_TOP_MID, 0, 32);
 
     page->arc = lv_arc_create(arc_box);
     lv_obj_set_size(page->arc, 188, 188);
@@ -41,8 +48,8 @@ void menu_measure_page_create(menu_measure_page_t *page, lv_obj_t *parent)
     lv_arc_set_value(page->arc, 0);
     lv_obj_clear_flag(page->arc, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_remove_style(page->arc, NULL, LV_PART_KNOB | LV_STATE_ANY);
-    lv_obj_set_style_arc_width(page->arc, 14, LV_PART_MAIN);
-    lv_obj_set_style_arc_width(page->arc, 14, LV_PART_INDICATOR);
+    lv_obj_set_style_arc_width(page->arc, 10, LV_PART_MAIN);
+    lv_obj_set_style_arc_width(page->arc, 10, LV_PART_INDICATOR);
     lv_obj_set_style_arc_color(page->arc, lv_color_hex(MENU_COLOR_GREEN), LV_PART_MAIN);
     lv_obj_set_style_arc_color(page->arc, lv_color_white(), LV_PART_INDICATOR);
     lv_obj_set_style_arc_rounded(page->arc, true, LV_PART_MAIN);
@@ -57,7 +64,8 @@ void menu_measure_page_create(menu_measure_page_t *page, lv_obj_t *parent)
     lv_label_set_text_static(page->value_label, page->value_text);
 
     page->unit_label = lv_label_create(arc_box);
-    lv_label_set_text_static(page->unit_label, "m3/h");
+    page->unit_text[0] = '\0';
+    lv_label_set_text_static(page->unit_label, page->unit_text);
     lv_obj_set_style_text_font(page->unit_label, menu_font_latin_12(), 0);
     lv_obj_set_style_text_color(page->unit_label, lv_color_white(), 0);
     lv_obj_align(page->unit_label, LV_ALIGN_CENTER, 0, 28);
@@ -88,12 +96,16 @@ void menu_measure_page_set_visible(menu_measure_page_t *page, bool visible)
  */
 void menu_measure_page_render(menu_measure_page_t *page,
                               double sq_value,
-                              double instant_flow_m3ph,
-                              double total_flow_m3,
+                              double instant_flow_value,
+                              const char *flow_unit_text,
+                              double arc_full_scale_value,
+                              double total_flow_value,
+                              const char *total_unit_text,
                               int16_t arc_value)
 {
     char sq_text[sizeof(page->sq_text)];
     char value_text[sizeof(page->value_text)];
+    char scale_text[sizeof(page->scale_text)];
     char total_text[sizeof(page->total_text)];
 
     if (page == NULL)
@@ -102,8 +114,17 @@ void menu_measure_page_render(menu_measure_page_t *page,
     }
 
     (void)snprintf(sq_text, sizeof(sq_text), "SQ: %.2f", sq_value);
-    (void)snprintf(value_text, sizeof(value_text), "%06.2f", instant_flow_m3ph);
-    (void)snprintf(total_text, sizeof(total_text), "%.6f  m3", total_flow_m3);
+    (void)snprintf(value_text, sizeof(value_text), "%07.2f", instant_flow_value);
+    (void)snprintf(scale_text,
+                   sizeof(scale_text),
+                   "FS: %.1f %s",
+                   arc_full_scale_value,
+                   (flow_unit_text != NULL) ? flow_unit_text : "");
+    (void)snprintf(total_text,
+                   sizeof(total_text),
+                   "%.6f  %s",
+                   total_flow_value,
+                   (total_unit_text != NULL) ? total_unit_text : "");
 
     if (strcmp(page->sq_text, sq_text) != 0)
     {
@@ -117,10 +138,27 @@ void menu_measure_page_render(menu_measure_page_t *page,
         lv_label_set_text_static(page->value_label, page->value_text);
     }
 
+    if (strcmp(page->scale_text, scale_text) != 0)
+    {
+        (void)strcpy(page->scale_text, scale_text);
+        lv_label_set_text_static(page->scale_label, page->scale_text);
+    }
+
     if (strcmp(page->total_text, total_text) != 0)
     {
         (void)strcpy(page->total_text, total_text);
         lv_label_set_text_static(page->total_label, page->total_text);
+    }
+
+    if (flow_unit_text == NULL)
+    {
+        flow_unit_text = "";
+    }
+
+    if (strcmp(page->unit_text, flow_unit_text) != 0)
+    {
+        (void)snprintf(page->unit_text, sizeof(page->unit_text), "%s", flow_unit_text);
+        lv_label_set_text_static(page->unit_label, page->unit_text);
     }
 
     if (lv_arc_get_value(page->arc) != arc_value)

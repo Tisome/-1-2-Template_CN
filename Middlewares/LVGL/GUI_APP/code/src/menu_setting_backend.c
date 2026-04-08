@@ -297,10 +297,16 @@ bool menu_setting_backend_build_view(const menu_setting_desc_t *setting,
         }
 
         view->show_value_box = true;
-        if ((setting->id == MENU_SETTING_ID_PIPE_MATERIAL) ||
-            (setting->id == MENU_SETTING_ID_FLOW_UNIT))
+        if (setting->id == MENU_SETTING_ID_PIPE_MATERIAL)
         {
             menu_setting_backend_copy_detail(view, "UP/DOWN SELECT");
+        }
+        else if (setting->id == MENU_SETTING_ID_FLOW_UNIT)
+        {
+            (void)snprintf(view->detail_text,
+                           sizeof(view->detail_text),
+                           "UP/DOWN SELECT\nTOTAL:%s",
+                           volume_unit_to_str(volume_unit_from_rate_unit((RateUnitType)option_value)));
         }
         return true;
 
