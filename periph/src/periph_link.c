@@ -1,8 +1,8 @@
 #include "periph_link.h"
-#include "circular_buffer.h"
-#include "usart.h"
-#include "spi.h"
 #include "app_config.h"
+#include "circular_buffer.h"
+#include "spi.h"
+#include "usart.h"
 
 #include "elog.h"
 
@@ -18,11 +18,21 @@ void hardware_periph_init(void)
 
     gpio_config();
 
-#if ENABLE_FPGA_SPI_COMM_TEST
+#if APP_ENABLE_MEASURE_FPGA_SPI
     spi1_init();
 #endif
 
+#if APP_ENABLE_MODBUS_RUNTIME
     g_modbus_rx_cb = modbus_buf_init();
-
-    usart0_dma_modbus_init(g_modbus_rx_cb->buffer, MODBUS_RX_BUF_SIZE);
+    if (g_modbus_rx_cb != NULL)
+    {
+        usart0_dma_modbus_init(g_modbus_rx_cb->buffer, MODBUS_RX_BUF_SIZE);
+    }
+    else
+    {
+        log_e("modbus_buf_init failed");
+    }
+#else
+    g_modbus_rx_cb = NULL;
+#endif
 }

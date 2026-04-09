@@ -4,6 +4,7 @@
  * 让算法、界面和 Modbus 子系统都能在 RCT6 板上完成联调。
  */
 #include "fake_data.h"
+#include "app_config.h"
 #include "freertos_resources.h"
 
 #include "FreeRTOS.h"
@@ -17,7 +18,7 @@
 #include "elog.h"
 
 #define FAKE_DATA_CFG_REFRESH_MS 1000U
-#define FAKE_DATA_LOG_PERIOD_MS  5000U
+#define FAKE_DATA_LOG_PERIOD_MS  APP_FAKE_DATA_LOG_PERIOD_MS
 
 /* 由当前管道内径计算横截面积，供假数据的流速/流量换算使用。 */
 static double fake_pipe_area_m2(const Pipe_Parameters_t *para)

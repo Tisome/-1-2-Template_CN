@@ -1,13 +1,3 @@
-/*
- * 测试任务总装配文件。
- * 本文件负责创建当前测试固件会启动的 FreeRTOS 任务，并决定哪些子系统参与联调：
- * 1. Modbus 解析与命令执行
- * 2. LVGL 界面任务
- * 3. 按键任务
- * 4. 假数据与算法处理链路
- *
- * 若后续切换到真实 SPI 或 EEPROM 联调，可优先从本文件调整任务开关、优先级和栈大小。
- */
 #include "does_it_work.h"
 
 #include "app_config.h"
@@ -23,186 +13,132 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#if ENABLE_FPGA_SPI_COMM_TEST
-#define ENABLE_MODBUS_PARSE_TASK        0U
-#define ENABLE_MODBUS_EXECUTE_TASK      0U
-#define ENABLE_SPI_COMM_TEST_TASK       1U
-#define ENABLE_MENU_SIM_DATA_PIPELINE   0U
-#define ENABLE_ALGORITHM_TASK           0U
-#define ENABLE_LVGL_TEST_TASK           0U
-#define ENABLE_KEY_TASK                 0U
-#else
-#define ENABLE_MODBUS_PARSE_TASK        1U
-#define ENABLE_MODBUS_EXECUTE_TASK      1U
-#define ENABLE_SPI_COMM_TEST_TASK       0U
-#define ENABLE_MENU_SIM_DATA_PIPELINE   1U
-#define ENABLE_ALGORITHM_TASK           1U
-#define ENABLE_LVGL_TEST_TASK           1U
-#define ENABLE_KEY_TASK                 1U
-#endif
-
-#define TASK_CLOCK_STACK_SIZE 256U
-#define TASK_E2PROM_STACK_SIZE 256U
-#define TASK_ELOG_STACK_SIZE 384U
-#define TASK_MODBUS_PARSE_STACK_SIZE 768U
+#define TASK_ELOG_STACK_SIZE           384U
+#define TASK_SPI_RX_STACK_SIZE         384U
+#define TASK_MODBUS_PARSE_STACK_SIZE   768U
 #define TASK_MODBUS_EXECUTE_STACK_SIZE 384U
-#define TASK_SPI_RX_STACK_SIZE 256U
-#define TASK_KEY_STACK_SIZE 384U
-#define TASK_KEY_TEST_STACK_SIZE 512U
-#define TASK_FAKE_DATA_STACK_SIZE 384U
-#define TASK_ALGORITHM_STACK_SIZE 512U
-#define TASK_LVGL_TEST_STACK_SIZE 1024U
+#define TASK_KEY_STACK_SIZE            384U
+#define TASK_FAKE_DATA_STACK_SIZE      384U
+#define TASK_ALGORITHM_STACK_SIZE      512U
+#define TASK_LVGL_TEST_STACK_SIZE      1024U
 
-#define TASK_CLOCK_PRIO 4U
-#define TASK_E2PROM_PRIO 4U
-#define TASK_ELOG_PRIO 3U
-#define TASK_MODBUS_PARSE_PRIO 5U
+#define TASK_ELOG_PRIO           3U
+#define TASK_SPI_RX_PRIO         7U
+#define TASK_MODBUS_PARSE_PRIO   5U
 #define TASK_MODBUS_EXECUTE_PRIO 5U
-#define TASK_SPI_RX_PRIO 7U
-#define TASK_KEY_PRIO 5U
-#define TASK_KEY_TEST_PRIO 4U
-#define TASK_FAKE_DATA_PRIO 4U
-#define TASK_ALGORITHM_PRIO 5U
-#define TASK_LVGL_TEST_PRIO 6U
+#define TASK_KEY_PRIO            5U
+#define TASK_FAKE_DATA_PRIO      4U
+#define TASK_ALGORITHM_PRIO      5U
+#define TASK_LVGL_TEST_PRIO      6U
 
 TaskHandle_t task_spi_rx_handler = NULL;
 TaskHandle_t task_modbus_handler = NULL;
 
-/* 按当前测试配置创建任务，并最终启动调度器。 */
+static int create_task(TaskFunction_t entry,
+                       const char *name,
+                       uint16_t stack_words,
+                       UBaseType_t priority,
+                       TaskHandle_t *handle)
+{
+    BaseType_t ret = xTaskCreate(entry,
+                                 name,
+                                 stack_words,
+                                 NULL,
+                                 priority,
+                                 handle);
+    if (ret != pdPASS)
+    {
+        log_e("create %s failed", name);
+        return -1;
+    }
+
+    return 0;
+}
+
 static int task_test(void)
 {
-    BaseType_t ret;
-
-    // ret = xTaskCreate(task_clock,
-    //                   "task_clock",
-    //                   TASK_CLOCK_STACK_SIZE,
-    //                   NULL,
-    //                   TASK_CLOCK_PRIO,
-    //                   NULL);
-    // if (ret != pdPASS)
-    // {
-    //     log_e("create task_clock failed");
-    //     return -1;
-    // }
-
-    // ret = xTaskCreate(task_e2prom,
-    //                   "task_e2prom",
-    //                   TASK_E2PROM_STACK_SIZE,
-    //                   NULL,
-    //                   TASK_E2PROM_PRIO,
-    //                   NULL);
-    // if (ret != pdPASS)
-    // {
-    //     log_e("create task_e2prom failed");
-    //     return -1;
-    // }
-
-#if ENABLE_MODBUS_PARSE_TASK
-    ret = xTaskCreate(task_modbus_parse,
-                      "task_modbus",
-                      TASK_MODBUS_PARSE_STACK_SIZE,
-                      NULL,
-                      TASK_MODBUS_PARSE_PRIO,
-                      &task_modbus_handler);
-    if (ret != pdPASS)
+#if APP_ENABLE_MEASURE_FPGA_SPI
+    if (create_task(task_spi_rx,
+                    "task_spi_rx",
+                    TASK_SPI_RX_STACK_SIZE,
+                    TASK_SPI_RX_PRIO,
+                    &task_spi_rx_handler) != 0)
     {
-        log_e("create task_modbus failed");
         return -1;
     }
 #endif
 
-#if ENABLE_SPI_COMM_TEST_TASK
-    ret = xTaskCreate(task_spi_rx,
-                      "task_spi_rx",
-                      TASK_SPI_RX_STACK_SIZE,
-                      NULL,
-                      TASK_SPI_RX_PRIO,
-                      &task_spi_rx_handler);
-    if (ret != pdPASS)
+#if APP_ENABLE_MEASURE_FAKE_DATA
+    if (create_task(task_fake_data,
+                    "task_fake_data",
+                    TASK_FAKE_DATA_STACK_SIZE,
+                    TASK_FAKE_DATA_PRIO,
+                    NULL) != 0)
     {
-        log_e("create task_spi_rx failed");
         return -1;
     }
 #endif
 
-    ret = xTaskCreate(task_elog,
-                      "task_elog",
-                      TASK_ELOG_STACK_SIZE,
-                      NULL,
-                      TASK_ELOG_PRIO,
-                      NULL);
-    if (ret != pdPASS)
+#if APP_ENABLE_ALGORITHM_TASK
+    if (create_task(task_algorithm,
+                    "task_algorithm",
+                    TASK_ALGORITHM_STACK_SIZE,
+                    TASK_ALGORITHM_PRIO,
+                    NULL) != 0)
     {
-        log_e("create task_elog failed");
-        return -1;
-    }
-
-#if ENABLE_LVGL_TEST_TASK
-    ret = xTaskCreate(task_lvgl_test,
-                      "task_lvgl_test",
-                      TASK_LVGL_TEST_STACK_SIZE,
-                      NULL,
-                      TASK_LVGL_TEST_PRIO,
-                      NULL);
-    if (ret != pdPASS)
-    {
-        log_e("create task_lvgl_test failed");
         return -1;
     }
 #endif
 
-#if ENABLE_KEY_TASK
-    ret = xTaskCreate(task_key,
-                      "task_key",
-                      TASK_KEY_STACK_SIZE,
-                      NULL,
-                      TASK_KEY_PRIO,
-                      &task_key_handle);
-    if (ret != pdPASS)
+#if APP_ENABLE_KEY_TASK
+    if (create_task(task_key,
+                    "task_key",
+                    TASK_KEY_STACK_SIZE,
+                    TASK_KEY_PRIO,
+                    &task_key_handle) != 0)
     {
-        log_e("create task_key failed");
         return -1;
     }
 #endif
 
-#if ENABLE_MODBUS_EXECUTE_TASK
-    ret = xTaskCreate(task_modbus_execute,
-                      "task_modbus_execute",
-                      TASK_MODBUS_EXECUTE_STACK_SIZE,
-                      NULL,
-                      TASK_MODBUS_EXECUTE_PRIO,
-                      NULL);
-    if (ret != pdPASS)
+#if APP_ENABLE_GUI_TASK
+    if (create_task(task_lvgl_test,
+                    "task_lvgl_test",
+                    TASK_LVGL_TEST_STACK_SIZE,
+                    TASK_LVGL_TEST_PRIO,
+                    NULL) != 0)
     {
-        log_e("create task_modbus_execute failed");
         return -1;
     }
 #endif
 
-#if ENABLE_MENU_SIM_DATA_PIPELINE
-    ret = xTaskCreate(task_fake_data,
-                      "task_fake_data",
-                      TASK_FAKE_DATA_STACK_SIZE,
-                      NULL,
-                      TASK_FAKE_DATA_PRIO,
-                      NULL);
-    if (ret != pdPASS)
+#if APP_ENABLE_MODBUS_RUNTIME
+    if (create_task(task_modbus_parse,
+                    "task_modbus",
+                    TASK_MODBUS_PARSE_STACK_SIZE,
+                    TASK_MODBUS_PARSE_PRIO,
+                    &task_modbus_handler) != 0)
     {
-        log_e("create task_fake_data failed");
+        return -1;
+    }
+
+    if (create_task(task_modbus_execute,
+                    "task_modbus_execute",
+                    TASK_MODBUS_EXECUTE_STACK_SIZE,
+                    TASK_MODBUS_EXECUTE_PRIO,
+                    NULL) != 0)
+    {
         return -1;
     }
 #endif
 
-#if ENABLE_ALGORITHM_TASK
-    ret = xTaskCreate(task_algorithm,
-                      "task_algorithm",
-                      TASK_ALGORITHM_STACK_SIZE,
-                      NULL,
-                      TASK_ALGORITHM_PRIO,
-                      NULL);
-    if (ret != pdPASS)
+#if APP_ENABLE_ELOG_TASK
+    if (create_task(task_elog,
+                    "task_elog",
+                    TASK_ELOG_STACK_SIZE,
+                    TASK_ELOG_PRIO,
+                    NULL) != 0)
     {
-        log_e("create task_algorithm failed");
         return -1;
     }
 #endif
@@ -211,33 +147,27 @@ static int task_test(void)
 
     while (1)
     {
-        /* 不应该执行到这里 */
     }
 }
 
-/* 返回真实 SPI 接收任务句柄，供中断或其他模块在需要时唤醒该任务。 */
 TaskHandle_t get_spi_rx_task_handle(void)
 {
     return task_spi_rx_handler;
 }
 
-/* 返回真实 SPI 接收任务句柄，供中断或其他模块在需要时唤醒该任务。 */
 TaskHandle_t get_modbus_task_handle(void)
 {
     return task_modbus_handler;
 }
 
-/*
- * 系统测试入口。
- * 调用顺序是：
- * 1. 初始化 FreeRTOS 共享资源
- * 2. 初始化参数与 Modbus 映射
- * 3. 创建并启动测试任务
- */
 void does_it_work(void)
 {
     freertos_resources_init();
     parameter_init();
+
+#if APP_ENABLE_MODBUS_RUNTIME
     init_modbus_data();
+#endif
+
     (void)task_test();
 }

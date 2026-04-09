@@ -5,6 +5,7 @@
  */
 #include "algorithm_packet.h"
 #include "algorithm_process.h"
+#include "app_config.h"
 #include "freertos_resources.h"
 
 #include "FreeRTOS.h"
@@ -20,7 +21,7 @@
 #define ALGO_RX_TIMEOUT_MS         100U
 #define ALGO_TIMEOUT_LOG_PERIOD_MS 1000U
 #define ALGO_ERROR_LOG_PERIOD_MS   1000U
-#define ALGO_OUTPUT_LOG_PERIOD_MS  1000U
+#define ALGO_OUTPUT_LOG_PERIOD_MS  APP_ALGO_OUTPUT_LOG_PERIOD_MS
 
 /* 用于控制低频日志输出，避免高频任务把 RTT 日志刷爆。 */
 static bool algo_should_log(TickType_t now_tick,

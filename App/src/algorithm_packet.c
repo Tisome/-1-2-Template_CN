@@ -53,7 +53,10 @@ void rufx_unpack_packet(const rufx_raw_packet_t *raw,
     out->conv_y2 = sign_extend_48(y2);
     out->conv_y3 = sign_extend_48(y3);
 
-    *seq = raw->seq;
+    if (seq != NULL)
+    {
+        *seq = raw->seq;
+    }
 }
 
 /*

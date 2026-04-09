@@ -1,4 +1,5 @@
 #include "rcu.h"
+#include "app_config.h"
 
 void rcu_config(void)
 {
@@ -8,21 +9,13 @@ void rcu_config(void)
     rcu_apb2_clock_config(RCU_APB2_CKAHB_DIV1);
 
     /*==================== GPIO Clock Enable ====================*/
+#if APP_ENABLE_MEASURE_FPGA_SPI
     rcu_periph_clock_enable(RCU_GPIO_FPGA_INT_PORT);
     rcu_periph_clock_enable(RCU_GPIO_FPGA_START_PORT);
-
     rcu_periph_clock_enable(RCU_GPIO_FPGA_SPI_NSS_PORT);
     rcu_periph_clock_enable(RCU_GPIO_FPGA_SPI_SCK_PORT);
     rcu_periph_clock_enable(RCU_GPIO_FPGA_SPI_MISO_PORT);
     rcu_periph_clock_enable(RCU_GPIO_FPGA_SPI_MOSI_PORT);
-
-#if CCT6
-    rcu_periph_clock_enable(RCU_GPIO_TFT_DC_PORT);
-    rcu_periph_clock_enable(RCU_GPIO_TFT_CS_PORT);
-    rcu_periph_clock_enable(RCU_GPIO_TFT_RESET_PORT);
-    rcu_periph_clock_enable(RCU_GPIO_TFT_SCK_PORT);
-    rcu_periph_clock_enable(RCU_GPIO_TFT_SDA_PORT);
-    rcu_periph_clock_enable(RCU_GPIO_TFT_BL_PORT);
 #endif
 
     rcu_periph_clock_enable(RCU_GPIO_KEY1_PORT);
@@ -30,21 +23,31 @@ void rcu_config(void)
     rcu_periph_clock_enable(RCU_GPIO_KEY3_PORT);
     rcu_periph_clock_enable(RCU_GPIO_KEY4_PORT);
 
+#if USE_E2PROM
     rcu_periph_clock_enable(RCU_GPIO_EEPROM_I2C_PORT);
+#endif
 
+#if APP_ENABLE_MODBUS_RUNTIME
     rcu_periph_clock_enable(RCU_GPIO_USART0_PORT);
-
     rcu_periph_clock_enable(RCU_GPIO_RS485_CTRL_PORT);
+#endif
 
     /*==================== AFIO Clock Enable ====================*/
     rcu_periph_clock_enable(RCU_GPIO_AFIO);
 
     /*==================== Peripheral Clock Enable ====================*/
+#if APP_ENABLE_MEASURE_FPGA_SPI
     rcu_periph_clock_enable(RCU_FPGA_SPI);
-    rcu_periph_clock_enable(RCU_TFT_SPI);
+#endif
+
+#if USE_E2PROM
     rcu_periph_clock_enable(RCU_EEPROM_I2C);
+#endif
+
+#if APP_ENABLE_MODBUS_RUNTIME
     rcu_periph_clock_enable(RCU_MODBUS_USART);
     rcu_periph_clock_enable(RCU_DMA0_FOR_UASRT);
+#endif
 
     /*==================== Optional Peripheral Clock Enable ====================*/
     /* 如果当前工程没用到，可以先注释掉，等后面真正用时再打开 */

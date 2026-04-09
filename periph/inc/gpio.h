@@ -36,27 +36,6 @@
         gpio_bit_reset(FPGA_SPI_NSS_GPIO_PORT, FPGA_SPI_NSS_GPIO_PIN); \
     } while (0);
 
-#if CCT6
-// TFT LCD GPIO
-#define TFT_DC_GPIO_PORT    GPIOB
-#define TFT_DC_GPIO_PIN     GPIO_PIN_4
-
-#define TFT_CS_GPIO_PORT    GPIOA
-#define TFT_CS_GPIO_PIN     GPIO_PIN_15
-
-#define TFT_RESET_GPIO_PORT GPIOC
-#define TFT_RESET_GPIO_PIN  GPIO_PIN_13
-
-#define TFT_SCK_GPIO_PORT   GPIOB
-#define TFT_SCK_GPIO_PIN    GPIO_PIN_3
-
-#define TFT_SDA_GPIO_PORT   GPIOB
-#define TFT_SDA_GPIO_PIN    GPIO_PIN_5
-
-#define TFT_BL_GPIO_PORT    GPIOB
-#define TFT_BL_GPIO_PIN     GPIO_PIN_9
-#endif
-
 // KEY GPIO
 #if CCT6
 #define KEY1_GPIO_PORT        GPIOB
