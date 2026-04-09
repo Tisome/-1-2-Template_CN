@@ -10,6 +10,7 @@
  */
 #include "does_it_work.h"
 
+#include "app_config.h"
 #include "bsp_key.h"
 #include "data.h"
 #include "elog.h"
@@ -22,9 +23,23 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#define ENABLE_MENU_SIM_DATA_PIPELINE   1U
+#if ENABLE_FPGA_SPI_COMM_TEST
+#define ENABLE_MODBUS_PARSE_TASK        0U
+#define ENABLE_MODBUS_EXECUTE_TASK      0U
+#define ENABLE_SPI_COMM_TEST_TASK       1U
+#define ENABLE_MENU_SIM_DATA_PIPELINE   0U
+#define ENABLE_ALGORITHM_TASK           0U
+#define ENABLE_LVGL_TEST_TASK           0U
+#define ENABLE_KEY_TASK                 0U
+#else
 #define ENABLE_MODBUS_PARSE_TASK        1U
 #define ENABLE_MODBUS_EXECUTE_TASK      1U
+#define ENABLE_SPI_COMM_TEST_TASK       0U
+#define ENABLE_MENU_SIM_DATA_PIPELINE   1U
+#define ENABLE_ALGORITHM_TASK           1U
+#define ENABLE_LVGL_TEST_TASK           1U
+#define ENABLE_KEY_TASK                 1U
+#endif
 
 #define TASK_CLOCK_STACK_SIZE 256U
 #define TASK_E2PROM_STACK_SIZE 256U
@@ -96,17 +111,19 @@ static int task_test(void)
     }
 #endif
 
-    // ret = xTaskCreate(task_spi_rx,
-    //                   "taske_spi_rx",
-    //                   TASK_SPI_RX_STACK_SIZE,
-    //                   NULL,
-    //                   TASK_SPI_RX_PRIO,
-    //                   &task_spi_rx_handler);
-    // if (ret != pdPASS)
-    // {
-    //     log_e("create task_spi_rx failed");
-    //     return -1;
-    // }
+#if ENABLE_SPI_COMM_TEST_TASK
+    ret = xTaskCreate(task_spi_rx,
+                      "task_spi_rx",
+                      TASK_SPI_RX_STACK_SIZE,
+                      NULL,
+                      TASK_SPI_RX_PRIO,
+                      &task_spi_rx_handler);
+    if (ret != pdPASS)
+    {
+        log_e("create task_spi_rx failed");
+        return -1;
+    }
+#endif
 
     ret = xTaskCreate(task_elog,
                       "task_elog",
@@ -120,6 +137,7 @@ static int task_test(void)
         return -1;
     }
 
+#if ENABLE_LVGL_TEST_TASK
     ret = xTaskCreate(task_lvgl_test,
                       "task_lvgl_test",
                       TASK_LVGL_TEST_STACK_SIZE,
@@ -131,7 +149,9 @@ static int task_test(void)
         log_e("create task_lvgl_test failed");
         return -1;
     }
+#endif
 
+#if ENABLE_KEY_TASK
     ret = xTaskCreate(task_key,
                       "task_key",
                       TASK_KEY_STACK_SIZE,
@@ -143,6 +163,7 @@ static int task_test(void)
         log_e("create task_key failed");
         return -1;
     }
+#endif
 
 #if ENABLE_MODBUS_EXECUTE_TASK
     ret = xTaskCreate(task_modbus_execute,
@@ -170,7 +191,9 @@ static int task_test(void)
         log_e("create task_fake_data failed");
         return -1;
     }
+#endif
 
+#if ENABLE_ALGORITHM_TASK
     ret = xTaskCreate(task_algorithm,
                       "task_algorithm",
                       TASK_ALGORITHM_STACK_SIZE,

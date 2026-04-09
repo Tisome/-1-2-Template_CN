@@ -49,3 +49,8 @@
 #ifndef FAKE_DATA_MODE
 #define FAKE_DATA_MODE FAKE_DATA_MODE_SPEED
 #endif
+
+/************************* fpga spi test define *************************/
+#ifndef ENABLE_FPGA_SPI_COMM_TEST
+#define ENABLE_FPGA_SPI_COMM_TEST 1
+#endif

@@ -1,6 +1,7 @@
 #include "gd32f30x.h"
 
 #include "gpio.h"
+#include "app_config.h"
 
 void gpio_config()
 {
@@ -9,19 +10,28 @@ void gpio_config()
     /* disable JTAG, enable SWD */
 
     /* configure FPGA INT GPIO */
+#if ENABLE_FPGA_SPI_COMM_TEST
+    gpio_init(FPGA_INT_GPIO_PORT, GPIO_MODE_IPD, GPIO_OSPEED_50MHZ, FPGA_INT_GPIO_PIN);
+#else
     gpio_init(FPGA_INT_GPIO_PORT, GPIO_MODE_IPU, GPIO_OSPEED_50MHZ, FPGA_INT_GPIO_PIN);
+#endif
 
     nvic_irq_enable(FPGA_INT_GPIO_IRQN, 5U, 0U);
 
     gpio_exti_source_select(FPGA_INT_GPIO_PORT_SOURCE, FPGA_INT_GPIO_PIN_SOURCE);
 
+#if ENABLE_FPGA_SPI_COMM_TEST
+    exti_init(FPGA_INT_EXTI, EXTI_INTERRUPT, EXTI_TRIG_RISING);
+#else
     exti_init(FPGA_INT_EXTI, EXTI_INTERRUPT, EXTI_TRIG_FALLING);
+#endif
 
     exti_interrupt_flag_clear(FPGA_INT_EXTI);
     /* configure FPGA INT GPIO */
 
     /* configure FPGA START GPIO */
     gpio_init(FPGA_START_GPIO_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, FPGA_START_GPIO_PIN);
+    gpio_bit_reset(FPGA_START_GPIO_PORT, FPGA_START_GPIO_PIN);
     /* configure FPGA START GPIO */
 
     /* configure FPGA SPI GPIO */

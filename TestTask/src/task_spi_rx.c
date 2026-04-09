@@ -1,32 +1,65 @@
 #include "elog.h"
+#include "algorithm_packet.h"
+#include "data.h"
 #include "spi.h"
-#include <string.h>
 
 #include "FreeRTOS.h"
 #include "task.h"
 
 #include "gpio.h"
 
-#define FPGA_PKT_LEN 24U
+#include <string.h>
 
 extern TaskHandle_t task_spi_rx_handle;
 
+static void fpga_test_request_once(void)
+{
+    gpio_bit_reset(FPGA_START_GPIO_PORT, FPGA_START_GPIO_PIN);
+    vTaskDelay(pdMS_TO_TICKS(5));
+    gpio_bit_set(FPGA_START_GPIO_PORT, FPGA_START_GPIO_PIN);
+    vTaskDelay(pdMS_TO_TICKS(5));
+    gpio_bit_reset(FPGA_START_GPIO_PORT, FPGA_START_GPIO_PIN);
+}
+
+static BaseType_t fpga_test_int_is_asserted(void)
+{
+    return (gpio_input_bit_get(FPGA_INT_GPIO_PORT, FPGA_INT_GPIO_PIN) == SET) ? pdTRUE : pdFALSE;
+}
+
 void task_spi_rx(void *p)
 {
-    uint8_t rx_buf[FPGA_PKT_LEN];
+    uint8_t rx_buf[RUF_X_PACKET_SIZE_BYTES];
+    rufx_raw_packet_t raw = {0};
+    rufx_packet_t pkt = {0};
     spi_status_t ret;
     uint16_t i;
 
     (void)p;
 
-    /* 默认拉高片选 */
     gpio_bit_set(FPGA_SPI_NSS_GPIO_PORT, FPGA_SPI_NSS_GPIO_PIN);
+    gpio_bit_reset(FPGA_START_GPIO_PORT, FPGA_START_GPIO_PIN);
+    vTaskDelay(pdMS_TO_TICKS(100));
 
     while (1)
     {
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        while (ulTaskNotifyTake(pdTRUE, 0U) != 0U)
+        {
+        }
 
-        log_i("start spi rx");
+        log_i("request fpga spi test packet");
+        fpga_test_request_once();
+
+        if (fpga_test_int_is_asserted() == pdTRUE)
+        {
+            log_i("fpga_int already asserted, skip wait");
+        }
+        else if (ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1000)) == 0U)
+        {
+            log_e("wait fpga_int timeout");
+            continue;
+        }
+
+        log_i("start spi rx, len=%u", (unsigned int)RUF_X_PACKET_SIZE_BYTES);
 
         memset(rx_buf, 0, sizeof(rx_buf));
 
@@ -38,11 +71,22 @@ void task_spi_rx(void *p)
         }
 
         log_i("spi rx done");
-        for (i = 0; i < FPGA_PKT_LEN; i++)
+        for (i = 0; i < RUF_X_PACKET_SIZE_BYTES; i++)
         {
-            log_i("rx_buf[%d] = 0x%02X", i, rx_buf[i]);
+            log_i("rx_buf[%u] = 0x%02X", (unsigned int)i, rx_buf[i]);
         }
 
-        /* 后续可在这里做包头、CRC、解析 */
+        memcpy(raw.bytes, rx_buf, sizeof(rx_buf));
+        raw.seq = 0U;
+        rufx_unpack_packet(&raw, &pkt, NULL);
+
+        log_i("spi pkt: idxA=%u idxB=%u y1=%lld y2=%lld y3=%lld",
+              (unsigned int)pkt.idx_a,
+              (unsigned int)pkt.idx_b,
+              (long long)pkt.conv_y1,
+              (long long)pkt.conv_y2,
+              (long long)pkt.conv_y3);
+
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
