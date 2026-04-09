@@ -31,7 +31,11 @@ void gpio_config()
 
     /* configure FPGA START GPIO */
     gpio_init(FPGA_START_GPIO_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, FPGA_START_GPIO_PIN);
+#if ENABLE_FPGA_SPI_COMM_TEST
+    gpio_bit_set(FPGA_START_GPIO_PORT, FPGA_START_GPIO_PIN);
+#else
     gpio_bit_reset(FPGA_START_GPIO_PORT, FPGA_START_GPIO_PIN);
+#endif
     /* configure FPGA START GPIO */
 
     /* configure FPGA SPI GPIO */
