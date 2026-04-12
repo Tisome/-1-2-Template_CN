@@ -54,7 +54,11 @@ OF SUCH DAMAGE.
 #include "bsp_key.h"
 
 #include "gpio.h"
+#if CCT6
+#include "st7789.h"
+#elif RCT6
 #include "lcd_init.h"
+#endif
 #include "timer.h"
 #include "usart.h"
 
@@ -313,7 +317,11 @@ void EXTI10_15_IRQHandler(void)
 
 void DMA1_Channel1_IRQHandler(void)
 {
+#if CCT6
+    ST7789_SPI2_DMA_IRQHandler();
+#elif RCT6
     LCD_SPI2_DMA_IRQHandler();
+#endif
 }
 
 /* =========================

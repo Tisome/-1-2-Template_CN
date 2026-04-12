@@ -6,10 +6,31 @@
 
 #include "lv_port_disp_template.h"
 #include "../../lvgl.h"
-#include "lcd.h"
-#include "lcd_init.h"
 
 #include <stdint.h>
+
+#if CCT6
+#include "st7789.h"
+#define DISP_COLOR_BLACK BLACK
+#define DISP_INIT() ST7789_Init()
+#define DISP_FILL(x1, y1, x2, y2, color) ST7789_Fill((x1), (y1), (x2), (y2), (color))
+#define DISP_ADDRESS_SET(x1, y1, x2, y2) ST7789_Address_Set((x1), (y1), (x2), (y2))
+#define DISP_WRITE_BLOCKING(buf, count) ST7789_WriteColors_Blocking((buf), (count))
+#define DISP_WRITE_DMA(buf, count, cb, user) ST7789_WriteColors_DMA((buf), (count), (cb), (user))
+#define DISP_DMA_IS_BUSY() ST7789_DMA_IsBusy()
+#elif RCT6
+#include "lcd.h"
+#include "lcd_init.h"
+#define DISP_COLOR_BLACK BLACK
+#define DISP_INIT() LCD_Init()
+#define DISP_FILL(x1, y1, x2, y2, color) LCD_Fill((x1), (y1), (x2), (y2), (color))
+#define DISP_ADDRESS_SET(x1, y1, x2, y2) LCD_Address_Set((x1), (y1), (x2), (y2))
+#define DISP_WRITE_BLOCKING(buf, count) LCD_WriteColors_Blocking((buf), (count))
+#define DISP_WRITE_DMA(buf, count, cb, user) LCD_WriteColors_DMA((buf), (count), (cb), (user))
+#define DISP_DMA_IS_BUSY() LCD_DMA_IsBusy()
+#else
+#error "Define CCT6 or RCT6 to select the display backend."
+#endif
 
 #define MY_DISP_HOR_RES 240
 #define MY_DISP_VER_RES 240
@@ -63,13 +84,13 @@ void lv_port_disp_init(void)
 
 static void disp_init(void)
 {
-    LCD_Init();
-    LCD_Fill(0U, 0U, MY_DISP_HOR_RES, MY_DISP_VER_RES, BLACK);
+    DISP_INIT();
+    DISP_FILL(0U, 0U, MY_DISP_HOR_RES, MY_DISP_VER_RES, DISP_COLOR_BLACK);
 }
 
 static void disp_write_colors(const lv_color_t *color_p, uint32_t pixel_count)
 {
-    LCD_WriteColors_Blocking((const u16 *)color_p, pixel_count);
+    DISP_WRITE_BLOCKING((const uint16_t *)color_p, pixel_count);
 }
 
 static void disp_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_t *color_p)
@@ -121,7 +142,7 @@ static void disp_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_
     g_lvgl_display_diag.last_x2 = (int32_t)x2;
     g_lvgl_display_diag.last_y2 = (int32_t)y2;
 
-    LCD_Address_Set((u16)x1, (u16)y1, (u16)x2, (u16)y2);
+    DISP_ADDRESS_SET((uint16_t)x1, (uint16_t)y1, (uint16_t)x2, (uint16_t)y2);
 
     if ((x1 == area->x1) && (y1 == area->y1) && (x2 == area->x2) && (y2 == area->y2))
     {
@@ -130,14 +151,14 @@ static void disp_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_
         g_lvgl_display_diag.last_pixel_count = pixel_count;
 
         /* Finish the transfer in task context so LVGL isn't touched from DMA ISR. */
-        if (LCD_WriteColors_DMA((const u16 *)color_p, pixel_count, NULL, NULL))
+        if (DISP_WRITE_DMA((const uint16_t *)color_p, pixel_count, NULL, NULL))
         {
             uint32_t wait_loops = 0U;
 
             g_lvgl_display_diag.active_state = 2U;
             g_lvgl_display_diag.dma_start_count++;
 
-            while (LCD_DMA_IsBusy())
+            while (DISP_DMA_IS_BUSY())
             {
                 wait_loops++;
 
