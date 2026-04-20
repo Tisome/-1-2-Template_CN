@@ -9,7 +9,7 @@
 
 #include <stdint.h>
 
-#if CCT6
+#if CCT6 || CGT6
 #include "st7789.h"
 #define DISP_COLOR_BLACK BLACK
 #define DISP_INIT() ST7789_Init()

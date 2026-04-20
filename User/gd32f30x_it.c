@@ -54,7 +54,7 @@ OF SUCH DAMAGE.
 #include "bsp_key.h"
 
 #include "gpio.h"
-#if CCT6
+#if CCT6 || CGT6
 #include "st7789.h"
 #elif RCT6
 #include "lcd_init.h"
@@ -226,7 +226,7 @@ static void GPIO_EXTI_IRQHandler(uint32_t GPIO_PIN_x)
  * KEY IRQ (CCT6)
  * KEY1->EXTI0, KEY2->EXTI5_9, KEY3->EXTI1, KEY4->EXTI2
  * ========================= */
-#if CCT6
+#if CCT6 || CGT6
 void EXTI0_IRQHandler(void)
 {
     if (exti_interrupt_flag_get(KEY1_EXTI) != RESET)
@@ -317,7 +317,7 @@ void EXTI10_15_IRQHandler(void)
 
 void DMA1_Channel1_IRQHandler(void)
 {
-#if CCT6
+#if CCT6 || CGT6
     ST7789_SPI2_DMA_IRQHandler();
 #elif RCT6
     LCD_SPI2_DMA_IRQHandler();

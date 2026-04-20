@@ -25,7 +25,7 @@ uint16_t usart0_dma_get_pos(void)
 
 uint8_t usart0_read_byte(void)
 {
-#if CCT6
+#if CCT6 || CGT6
     return (uint8_t)usart_data_receive(USART0);
 #elif RCT6
     return (uint8_t)usart_data_receive(USART0);
@@ -36,7 +36,7 @@ uint8_t usart0_read_byte(void)
 
 void usart0_write_byte(uint8_t byte)
 {
-#if CCT6
+#if CCT6 || CGT6
     usart_data_transmit(USART0, byte);
 #elif RCT6
     usart_data_transmit(USART0, byte);
@@ -47,7 +47,7 @@ void usart0_write_byte(uint8_t byte)
 
 static void usart0_tx_begin(void)
 {
-#if CCT6
+#if CCT6 || CGT6
     /* RS485 board: DE = 1 (TX mode) */
     gpio_bit_set(RS485_CONTROL_GPIO_PORT, RS485_CONTROL_PIN);
 #elif RCT6
@@ -59,7 +59,7 @@ static void usart0_tx_begin(void)
 
 static void usart0_tx_end(void)
 {
-#if CCT6
+#if CCT6 || CGT6
     /* RS485 board: DE = 0 (RX mode) */
     gpio_bit_reset(RS485_CONTROL_GPIO_PORT, RS485_CONTROL_PIN);
 #elif RCT6

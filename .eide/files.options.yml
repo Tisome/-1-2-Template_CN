@@ -24,3 +24,6 @@ options:
     RCT6:
         files: {}
         virtualPathFiles: {}
+    CGT6:
+        files: {}
+        virtualPathFiles: {}

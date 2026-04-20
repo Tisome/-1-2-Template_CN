@@ -37,7 +37,7 @@
     } while (0);
 
 // KEY GPIO
-#if CCT6
+#if CCT6 || CGT6
 #define KEY1_GPIO_PORT        GPIOB
 #define KEY1_GPIO_PIN         GPIO_PIN_0
 #define KEY1_EXTI_IRQN        EXTI0_IRQn

@@ -1,11 +1,10 @@
 version: "4.1"
 name: GD32F303
 type: ARM
-deviceName: GD32F303RC
+deviceName: GD32F303CG
 packDir: .pack/GigaDevice/GD32F30x_DFP.2.2.1
 srcDirs:
   - Middlewares
-  - Task
   - TestTask
   - periph
   - BSP
@@ -24,6 +23,7 @@ virtualFolder:
       files:
         - path: Libraries/CMSIS/GD/GD32F30x/Source/system_gd32f30x.c
         - path: Libraries/CMSIS/GD/GD32F30x/Source/ARM/startup_gd32f30x_hd.s
+        - path: Libraries/CMSIS/GD/GD32F30x/Source/ARM/startup_gd32f30x_xd.s
       folders: []
     - name: Libraries
       files:
@@ -114,9 +114,9 @@ targets:
   CCT6:
     cppPreprocessAttrs:
       defineList:
-        - GD32F30X_HD
         - USE_STDPERIPH_DRIVER
         - CCT6
+        - GD32F30X_HD
       incList:
         - .
         - User
@@ -162,6 +162,7 @@ targets:
       - Middlewares/LVGL/GUI/lvgl/src/draw/sdl
       - Middlewares/LVGL/GUI/lvgl/src/draw/stm32_dma2d
       - BSP/LCD
+      - <virtual_root>/startup/startup_gd32f30x_xd.s
     settings:
       debugger: cortex-debug
     toolchain: AC5
@@ -256,6 +257,174 @@ targets:
               isStartup: true
               mem:
                 size: "0x40000"
+                startAddr: "0x8000000"
+              tag: IROM
+            - id: 2
+              isChecked: false
+              isStartup: false
+              mem:
+                size: "0x0"
+                startAddr: "0x0"
+              tag: IROM
+        useCustomScatterFile: false
+    uploadConfigMap:
+      JLink:
+        baseAddr: ""
+        bin: ""
+        cpuInfo:
+          cpuName: "null"
+          vendor: "null"
+        otherCmds: ""
+        proType: 1
+        speed: 8000
+    uploader: JLink
+  CGT6:
+    cppPreprocessAttrs:
+      defineList:
+        - GD32F30X_XD
+        - USE_STDPERIPH_DRIVER
+        - CGT6
+      incList:
+        - .
+        - User
+        - Code
+        - Libraries/CMSIS/GD/GD32F30x/Include
+        - Libraries/CMSIS
+        - Libraries/CMSIS/GD/GD32F30x/Source/ARM
+        - Libraries/GD32F30x_standard_peripheral/GD32F30x_Lib/Head
+        - Libraries/GD32F30x_standard_peripheral/GD32F30x_Lib/Inc
+        - .cmsis/include
+        - RTE/_Target 1
+        - Middlewares/FreeRTOS/include
+        - Middlewares/FreeRTOS/portable/RVDS/ARM_CM4F
+        - Middlewares/FreeRTOS
+        - Middlewares/FreeRTOS/source
+        - Middlewares/FreeRTOS/hook/inc
+        - Middlewares/easylogger/inc
+        - Middlewares/easylogger/port
+        - Middlewares/SEGGER_RTT
+        - Middlewares/circular_buffer/inc
+        - periph/inc
+        - Task/inc
+        - TestTask/inc
+        - Middlewares/Modbus/inc
+        - App/inc
+        - BSP/KEY/inc
+        - BSP/at24cxx/inc
+        - BSP/ST7789
+        - Middlewares/LVGL/GUI/lvgl
+        - Middlewares/LVGL/GUI/lvgl/src
+        - Middlewares/LVGL/GUI/lvgl/examples/porting
+        - Middlewares/LVGL/GUI_APP/code/inc
+        - Middlewares/LVGL/GUI_APP/code/src
+        - Middlewares/LVGL/GUI_APP/font
+      libList: []
+    excludeList:
+      - Task/src
+      - Task/inc
+      - <virtual_root>/startup/startup_gd32f30x_hd.s
+      - Middlewares/LVGL/GUI/lvgl/src/draw/nxp_pxp
+      - Middlewares/LVGL/GUI/lvgl/src/draw/nxp_vglite
+      - Middlewares/LVGL/GUI/lvgl/src/draw/sdl
+      - Middlewares/LVGL/GUI/lvgl/src/draw/stm32_dma2d
+      - Middlewares/LVGL/GUI/lvgl/src/extra/libs
+      - Middlewares/LVGL/GUI/lvgl/src/extra/others
+    settings:
+      debugger: cortex-debug
+    toolchain: AC5
+    toolchainConfigMap:
+      AC5:
+        archExtensions: ""
+        cpuType: Cortex-M4
+        floatingPointHardware: single
+        options:
+          version: 4
+          afterBuildTasks: []
+          asm-compiler:
+            defines: []
+          beforeBuildTasks: []
+          c/cpp-compiler:
+            CXX_FLAGS: --diag_suppress=1 --diag_suppress=1295
+            C_FLAGS: --diag_suppress=1 --diag_suppress=1295
+            c99-mode: true
+            one-elf-section-per-function: true
+            optimization: level-1
+            warnings: all-warnings
+          global:
+            output-debug-info: enable
+            use-microLIB: true
+          linker:
+            $outputTaskExcludes:
+              - .bin
+            output-format: elf
+            ro-base: "0x08000000"
+            rw-base: "0x20000000"
+            xo-base: ""
+        scatterFilePath: ""
+        storageLayout:
+          RAM:
+            - id: 1
+              isChecked: false
+              mem:
+                size: "0x0"
+                startAddr: "0x0"
+              noInit: false
+              tag: RAM
+            - id: 2
+              isChecked: false
+              mem:
+                size: "0x0"
+                startAddr: "0x0"
+              noInit: false
+              tag: RAM
+            - id: 3
+              isChecked: false
+              mem:
+                size: "0x0"
+                startAddr: "0x0"
+              noInit: false
+              tag: RAM
+            - id: 1
+              isChecked: true
+              mem:
+                size: "0x18000"
+                startAddr: "0x20000000"
+              noInit: false
+              tag: IRAM
+            - id: 2
+              isChecked: false
+              mem:
+                size: "0x0"
+                startAddr: "0x0"
+              noInit: false
+              tag: IRAM
+          ROM:
+            - id: 1
+              isChecked: false
+              isStartup: false
+              mem:
+                size: "0x0"
+                startAddr: "0x0"
+              tag: ROM
+            - id: 2
+              isChecked: false
+              isStartup: false
+              mem:
+                size: "0x0"
+                startAddr: "0x0"
+              tag: ROM
+            - id: 3
+              isChecked: false
+              isStartup: false
+              mem:
+                size: "0x0"
+                startAddr: "0x0"
+              tag: ROM
+            - id: 1
+              isChecked: true
+              isStartup: true
+              mem:
+                size: "0x100000"
                 startAddr: "0x8000000"
               tag: IROM
             - id: 2
@@ -329,6 +498,7 @@ targets:
       - Middlewares/LVGL/GUI/lvgl/src/draw/sdl
       - Middlewares/LVGL/GUI/lvgl/src/draw/stm32_dma2d
       - BSP/ST7789
+      - <virtual_root>/startup/startup_gd32f30x_xd.s
     settings:
       debugger: cortex-debug
     toolchain: AC5
@@ -358,159 +528,6 @@ targets:
             output-format: elf
             ro-base: "0x08000000"
             rw-base: "0x20000000"
-        scatterFilePath: ""
-        storageLayout:
-          RAM:
-            - id: 1
-              isChecked: false
-              mem:
-                size: "0x0"
-                startAddr: "0x0"
-              noInit: false
-              tag: RAM
-            - id: 2
-              isChecked: false
-              mem:
-                size: "0x0"
-                startAddr: "0x0"
-              noInit: false
-              tag: RAM
-            - id: 3
-              isChecked: false
-              mem:
-                size: "0x0"
-                startAddr: "0x0"
-              noInit: false
-              tag: RAM
-            - id: 1
-              isChecked: true
-              mem:
-                size: "0xc000"
-                startAddr: "0x20000000"
-              noInit: false
-              tag: IRAM
-            - id: 2
-              isChecked: false
-              mem:
-                size: "0x0"
-                startAddr: "0x0"
-              noInit: false
-              tag: IRAM
-          ROM:
-            - id: 1
-              isChecked: false
-              isStartup: false
-              mem:
-                size: "0x0"
-                startAddr: "0x0"
-              tag: ROM
-            - id: 2
-              isChecked: false
-              isStartup: false
-              mem:
-                size: "0x0"
-                startAddr: "0x0"
-              tag: ROM
-            - id: 3
-              isChecked: false
-              isStartup: false
-              mem:
-                size: "0x0"
-                startAddr: "0x0"
-              tag: ROM
-            - id: 1
-              isChecked: true
-              isStartup: true
-              mem:
-                size: "0x40000"
-                startAddr: "0x8000000"
-              tag: IROM
-            - id: 2
-              isChecked: false
-              isStartup: false
-              mem:
-                size: "0x0"
-                startAddr: "0x0"
-              tag: IROM
-        useCustomScatterFile: false
-    uploadConfigMap:
-      JLink:
-        baseAddr: ""
-        bin: ""
-        cpuInfo:
-          cpuName: "null"
-          vendor: "null"
-        otherCmds: ""
-        proType: 1
-        speed: 8000
-    uploader: JLink
-  Target 1:
-    cppPreprocessAttrs:
-      defineList:
-        - GD32F30X_HD
-        - USE_STDPERIPH_DRIVER
-      incList:
-        - .
-        - User
-        - Code
-        - Libraries/CMSIS/GD/GD32F30x/Include
-        - Libraries/CMSIS
-        - Libraries/CMSIS/GD/GD32F30x/Source/ARM
-        - Libraries/GD32F30x_standard_peripheral/GD32F30x_Lib/Head
-        - Libraries/GD32F30x_standard_peripheral/GD32F30x_Lib/Inc
-        - .cmsis/include
-        - RTE/_Target 1
-        - Middlewares/FreeRTOS/include
-        - Middlewares/FreeRTOS/portable/RVDS/ARM_CM4F
-        - Middlewares/FreeRTOS
-        - Middlewares/FreeRTOS/source
-        - Middlewares/FreeRTOS/hook/inc
-        - Middlewares/easylogger/inc
-        - Middlewares/easylogger/port
-        - Middlewares/SEGGER_RTT
-        - Middlewares/circular_buffer/inc
-        - periph/inc
-        - Task/inc
-        - TestTask/inc
-        - Middlewares/Modbus/inc
-        - App/inc
-        - BSP/KEY/inc
-        - BSP/at24cxx/inc
-      libList: []
-    excludeList:
-      - Task/src
-      - Task/inc
-    settings:
-      debugger: cortex-debug
-    toolchain: AC5
-    toolchainConfigMap:
-      AC5:
-        archExtensions: ""
-        cpuType: Cortex-M4
-        floatingPointHardware: single
-        options:
-          version: 4
-          afterBuildTasks: []
-          asm-compiler:
-            defines: []
-          beforeBuildTasks: []
-          c/cpp-compiler:
-            CXX_FLAGS: --diag_suppress=1 --diag_suppress=1295
-            C_FLAGS: --diag_suppress=1 --diag_suppress=1295
-            c99-mode: true
-            one-elf-section-per-function: true
-            optimization: level-1
-            warnings: all-warnings
-          global:
-            output-debug-info: enable
-            use-microLIB: true
-          linker:
-            $outputTaskExcludes:
-              - .bin
-            output-format: elf
-            ro-base: "0x08000000"
-            rw-base: "0x20000000"
-            xo-base: ""
         scatterFilePath: ""
         storageLayout:
           RAM:

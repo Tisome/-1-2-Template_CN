@@ -1,7 +1,7 @@
 #include "gd32f30x.h"
 
-#include "gpio.h"
 #include "app_config.h"
+#include "gpio.h"
 
 void gpio_config()
 {
@@ -78,7 +78,7 @@ void gpio_config()
     gpio_init(USART0_GPIO_PORT, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, USART0_TX_GPIO_PIN);
     gpio_init(USART0_GPIO_PORT, GPIO_MODE_IN_FLOATING, GPIO_OSPEED_50MHZ, USART0_RX_GPIO_PIN);
 
-#if CCT6
+#if CCT6 || CGT6
     /* configure RS485 Control GPIO port (CCT6 only) */
     gpio_init(RS485_CONTROL_GPIO_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, RS485_CONTROL_PIN);
     gpio_bit_reset(RS485_CONTROL_GPIO_PORT, RS485_CONTROL_PIN);

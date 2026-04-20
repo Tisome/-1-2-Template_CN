@@ -68,7 +68,7 @@ void DebugMon_Handler(void);
 /* this function handles SysTick exception */
 // void SysTick_Handler(void);
 
-#if CCT6
+#if CCT6 || CGT6
 void EXTI0_IRQHandler(void);
 void EXTI5_9_IRQHandler(void);
 void EXTI1_IRQHandler(void);
